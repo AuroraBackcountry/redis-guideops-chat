@@ -1,0 +1,85 @@
+// Unread Indicator Styles
+.unread-indicator {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  .unread-count {
+    background-color: #ff3742; // Red notification color
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    box-sizing: border-box;
+    text-align: center;
+    line-height: 1;
+    
+    // For single digits, make it circular
+    &:not([data-count^="1"]):not([data-count^="2"]):not([data-count^="3"]):not([data-count^="4"]):not([data-count^="5"]):not([data-count^="6"]):not([data-count^="7"]):not([data-count^="8"]):not([data-count^="9"]) {
+      min-width: 16px;
+      width: 16px;
+    }
+    
+    // Ensure visibility with shadow
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+}
+
+// Position the unread indicator in channel preview
+.channel-preview {
+  position: relative;
+  
+  .unread-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+  }
+  
+  // For team channels, position relative to the icon
+  &.team-channel .unread-indicator {
+    right: 12px;
+  }
+  
+  // For direct messages, position relative to avatar
+  &.direct-message .unread-indicator {
+    top: 6px;
+    right: 6px;
+  }
+}
+
+// Dark theme support
+[data-theme="dark"] {
+  .unread-indicator .unread-count {
+    background-color: #ff4757;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+}
+
+// High contrast mode
+@media (prefers-contrast: high) {
+  .unread-indicator .unread-count {
+    background-color: #d63031;
+    border: 1px solid #ffffff;
+    font-weight: 700;
+  }
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: no-preference) {
+  .unread-indicator {
+    animation: subtle-pulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes subtle-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+}

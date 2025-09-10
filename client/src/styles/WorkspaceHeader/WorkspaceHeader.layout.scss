@@ -1,0 +1,59 @@
+@mixin workspace-header-layout {
+  height: var(--header-height);
+  min-height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 20px;
+  
+  .workspace-header__block,
+  .workspace-header__block-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow-y: hidden;
+    min-width: fit-content;
+  }
+
+  > .workspace-header__block:first-of-type {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .workspace-header__title,
+  .workspace-header__subtitle {
+    white-space: nowrap;
+  }
+
+  .workspace-header__title {
+    white-space: nowrap;
+    margin-right: 8px;
+  }
+
+  .channel-info-btn {
+    margin-right: 8px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+    
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  .team-channel-header__add-member {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+    font-size: 11px;
+    
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  button {
+    @include reset-button-style;
+    @include center-content;
+    gap: 4px;
+  }
+}

@@ -1,0 +1,74 @@
+.admin-controls {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  margin-bottom: 8px;
+}
+
+.admin-controls__header {
+  margin-bottom: 8px;
+}
+
+.admin-controls__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-controls__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-controls__button {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary, #374151);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.admin-controls__button:hover {
+  background: var(--primary-color-alpha, #6366f11a);
+  color: var(--primary-color, #6366f1);
+}
+
+.admin-controls__button:active {
+  transform: translateY(1px);
+}
+
+.admin-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px !important;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.admin-button:hover {
+  background: var(--primary-color-alpha, #6366f11a) !important;
+  color: var(--primary-color, #6366f1) !important;
+}
+
+.admin-controls__button.private-channel {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  font-weight: 600;
+}
+
+.admin-controls__button.private-channel:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: white;
+}

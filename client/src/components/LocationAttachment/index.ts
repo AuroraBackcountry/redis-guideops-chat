@@ -1,0 +1,1 @@
+export { LocationAttachment } from './LocationAttachment';

@@ -1,0 +1,147 @@
+.user-management {
+  padding: 20px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.user-management__section {
+  margin-bottom: 24px;
+}
+
+.user-management__section h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #1f2937);
+}
+
+.user-management__load-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.user-management__load-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--primary-color, #6366f1);
+  background: var(--primary-color, #6366f1);
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-management__load-btn:hover:not(:disabled) {
+  background: var(--primary-color-dark, #5855eb);
+}
+
+.user-management__load-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.user-management__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.user-management__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  background: white;
+}
+
+.user-management__user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-management__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-management__name {
+  font-weight: 500;
+  color: var(--text-primary, #1f2937);
+  font-size: 14px;
+}
+
+.user-management__role {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.user-management__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.user-management__action-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-management__action-btn.promote {
+  background: #fbbf24;
+  color: white;
+}
+
+.user-management__action-btn.promote:hover {
+  background: #f59e0b;
+}
+
+.user-management__action-btn.mute {
+  background: #f87171;
+  color: white;
+}
+
+.user-management__action-btn.mute:hover {
+  background: #ef4444;
+}
+
+.user-management__action-btn.unmute {
+  background: #10b981;
+  color: white;
+}
+
+.user-management__action-btn.unmute:hover {
+  background: #059669;
+}
+
+.user-management__action-btn.ban {
+  background: #dc2626;
+  color: white;
+}
+
+.user-management__action-btn.ban:hover {
+  background: #b91c1c;
+}
+
+.user-management__action-btn.add {
+  background: var(--primary-color, #6366f1);
+  color: white;
+}
+
+.user-management__action-btn.add:hover {
+  background: var(--primary-color-dark, #5855eb);
+}

@@ -1,0 +1,23 @@
+/* Inherit all styles from Login.css */
+@import '../Login/Login.css';
+
+.switch-auth-button {
+  background: none;
+  border: none;
+  color: #6366f1;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  padding: 0;
+  margin: 0;
+}
+
+.switch-auth-button:hover:not(:disabled) {
+  color: #5855eb;
+}
+
+.switch-auth-button:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  text-decoration: none;
+}

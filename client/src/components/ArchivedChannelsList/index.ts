@@ -1,0 +1,2 @@
+export { ArchivedChannelsList } from './ArchivedChannelsList';
+

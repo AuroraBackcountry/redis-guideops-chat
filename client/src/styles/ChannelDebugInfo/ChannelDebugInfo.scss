@@ -1,0 +1,85 @@
+.channel-debug-info {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  z-index: 1000;
+}
+
+.channel-debug-toggle {
+  padding: 6px 12px;
+  background: #374151;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.channel-debug-toggle:hover {
+  opacity: 1;
+}
+
+.channel-debug-panel {
+  position: absolute;
+  bottom: 35px;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+  width: 300px;
+  font-size: 12px;
+}
+
+.channel-debug-panel h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.debug-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.debug-item strong {
+  color: #374151;
+}
+
+.debug-item .private {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.debug-item .public {
+  color: #059669;
+  font-weight: 600;
+}
+
+.debug-raw-data {
+  margin-top: 12px;
+}
+
+.debug-raw-data summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #6366f1;
+  margin-bottom: 8px;
+}
+
+.debug-raw-data pre {
+  background: #f9fafb;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+}

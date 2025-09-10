@@ -1,0 +1,158 @@
+.user-info-modal__backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.user-info-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.user-info-modal__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.user-info-modal__avatar {
+  flex-shrink: 0;
+}
+
+.user-info-modal__avatar img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-info-modal__basic-info h3 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.user-info-modal__role {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.user-info-modal__close-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.user-info-modal__close-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.user-info-modal__details {
+  margin-bottom: 20px;
+}
+
+.user-info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 14px;
+}
+
+.user-info-item strong {
+  color: #374151;
+}
+
+.user-info-modal__admin-actions {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 16px;
+}
+
+.user-info-modal__admin-actions h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.user-info-modal__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.user-info-action-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-info-action-btn.mute {
+  background: #f87171;
+  color: white;
+}
+
+.user-info-action-btn.mute:hover {
+  background: #ef4444;
+}
+
+.user-info-action-btn.ban {
+  background: #dc2626;
+  color: white;
+}
+
+.user-info-action-btn.ban:hover {
+  background: #b91c1c;
+}
+
+.user-info-modal__loading,
+.user-info-modal__error {
+  text-align: center;
+  padding: 20px;
+  color: #6b7280;
+}
+
+.user-info-modal__close {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
