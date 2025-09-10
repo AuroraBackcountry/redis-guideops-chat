@@ -1,1 +1,1 @@
-web: python app.py
+web: PORT=${PORT:-3000} python app.py
