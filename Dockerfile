@@ -9,5 +9,5 @@ RUN pip install -r requirements.txt
 COPY . /app
 WORKDIR /app
 
-# Force direct execution and override Railway's gunicorn detection
-CMD ["python", "-c", "import app; import eventlet; eventlet.monkey_patch(); from chat.app import run_app; run_app()"]
+# Let Railway use gunicorn but with proper configuration
+# gunicorn will import app:app and our app.py is now compatible
