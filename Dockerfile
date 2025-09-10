@@ -9,5 +9,5 @@ RUN pip install -r requirements.txt
 COPY . /app
 WORKDIR /app
 
-# Use direct Flask-SocketIO execution (not gunicorn)
-CMD ["python", "app.py"]
+# Force direct execution and override Railway's gunicorn detection
+CMD ["python", "-c", "import app; import eventlet; eventlet.monkey_patch(); from chat.app import run_app; run_app()"]
