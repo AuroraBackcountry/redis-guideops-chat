@@ -20,7 +20,8 @@ def get_user_data(user_id):
     user_id_str = str(user_id)
     first_name = user_data.get(b"first_name", "").decode('utf-8')
     last_name = user_data.get(b"last_name", "").decode('utf-8')
-    email = user_data.get(b"email", user_data.get(b"username", "")).decode('utf-8')
+    email_bytes = user_data.get(b"email") or user_data.get(b"username", b"")
+    email = email_bytes.decode('utf-8') if email_bytes else ""
     role = user_data.get(b"role", "user").decode('utf-8')
     
     # Create display name for UI
@@ -126,7 +127,8 @@ def me():
         if user_data:
             first_name = user_data.get(b"first_name", "").decode('utf-8')
             last_name = user_data.get(b"last_name", "").decode('utf-8')
-            email = user_data.get(b"email", user_data.get(b"username", "").encode('utf-8')).decode('utf-8')
+            email_bytes = user_data.get(b"email") or user_data.get(b"username", b"")
+            email = email_bytes.decode('utf-8') if email_bytes else ""
             
             # Create display name
             if first_name or last_name:
@@ -191,6 +193,20 @@ def debug_all_users():
     return jsonify({
         "total_users": int(total_users.decode('utf-8')),
         "users": all_users
+    })
+
+@app.route("/admin/stats")
+def admin_stats():
+    """Get real-time admin panel statistics"""
+    total_users = redis_client.get("total_users")
+    online_users_count = redis_client.scard("online_users")
+    general_messages_count = redis_client.zcard("room:0")
+    
+    return jsonify({
+        "total_users": int(total_users.decode('utf-8')) if total_users else 0,
+        "online_users": online_users_count,
+        "total_rooms": 1,  # General room
+        "total_messages": general_messages_count
     })
 
 @app.route("/register", methods=["POST"])
@@ -547,7 +563,7 @@ def admin_panel():
     <body>
         <div class="container">
             <div class="header">
-                <h1>🚀 Redis Chat Admin Panel</h1>
+                <h1>GuideOps Chat Admin Panel</h1>
                 <p>Real-time chat system powered by Redis + Flask + Socket.IO</p>
             </div>
             
@@ -624,14 +640,15 @@ def admin_panel():
             
             async function loadStats() {
                 try {
-                    const response = await fetch('/users/online');
-                    const onlineUsers = await response.json();
-                    document.getElementById('online-users').textContent = onlineUsers.length;
+                    // Get real-time stats from dedicated endpoint
+                    const response = await fetch('/admin/stats');
+                    const stats = await response.json();
                     
-                    // Get total users from Redis (this would need a new endpoint)
-                    document.getElementById('total-users').textContent = '4'; // Demo data has 4 users
-                    document.getElementById('total-rooms').textContent = '5'; // Demo data has 5 rooms
-                    document.getElementById('total-messages').textContent = '25+'; // Demo data has messages
+                    // Update with real data
+                    document.getElementById('total-users').textContent = stats.total_users;
+                    document.getElementById('online-users').textContent = stats.online_users;
+                    document.getElementById('total-rooms').textContent = stats.total_rooms;
+                    document.getElementById('total-messages').textContent = stats.total_messages;
                 } catch (error) {
                     console.error('Error loading stats:', error);
                 }
@@ -657,7 +674,7 @@ def admin_panel():
             
             async function loadRooms() {
                 try {
-                    const response = await fetch('/rooms/1'); // Get Pablo's rooms as example
+                    const response = await fetch('/rooms/1'); // Get first user's rooms
                     const rooms = await response.json();
                     const tbody = document.querySelector('#rooms-table tbody');
                     tbody.innerHTML = '';
