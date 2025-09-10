@@ -1,16 +1,19 @@
 {
-  "name": "Python Flask Redis chat",
-  "repository": "https://github.com/redis-developer/basic-redis-chat-app-demo-python",
+  "name": "GuideOps Chat - Production",
+  "repository": "https://github.com/AuroraBackcountry/redis-guideops-chat",
   "logo": "https://redis.io/images/redis-white.png",
-  "addons": ["rediscloud:30"],
   "env": {
-    "REDIS_ENDPOINT_URL": {
-      "description": "A Redis cloud endpoint URL.",
+    "REDIS_URL": {
+      "description": "External Redis Cloud connection string",
       "required": true
     },
-    "REDIS_PASSWORD": {
-      "description": "A Redis password.",
+    "SECRET_KEY": {
+      "description": "Flask secret key for sessions",
       "required": true
+    },
+    "FLASK_ENV": {
+      "description": "Flask environment mode",
+      "value": "production"
     }
   }
 }
