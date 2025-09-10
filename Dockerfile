@@ -9,5 +9,5 @@ RUN pip install -r requirements.txt
 COPY . /app
 WORKDIR /app
 
-# Let Railway use gunicorn but with proper configuration
-# gunicorn will import app:app and our app.py is now compatible
+# Temporary diagnostic mode
+CMD ["python", "test_app.py"]
