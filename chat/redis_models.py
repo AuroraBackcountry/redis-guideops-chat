@@ -459,4 +459,7 @@ def init_enhanced_redis():
     redis_client.hmset("channel:0", general_channel.to_dict())
     redis_client.sadd("public_channels", "0")
     
+    # Also create the old room:0 structure for backward compatibility
+    redis_client.set("room:0:name", "General")
+    
     print("✅ Enhanced Redis data structure initialized")

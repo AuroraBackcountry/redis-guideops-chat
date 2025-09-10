@@ -78,10 +78,6 @@ def create_private_room(user1, user2):
 
 
 def init_redis():
-    # Initialize enhanced Redis structure first
-    from chat.redis_models import init_enhanced_redis
-    init_enhanced_redis()
-    
     # We store a counter for the total users and increment it on each register
     total_users_exist = redis_client.exists("total_users")
     if not total_users_exist:
