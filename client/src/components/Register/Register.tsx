@@ -12,6 +12,7 @@ interface RegisterProps {
 export const Register: React.FC<RegisterProps> = ({ onRegister, onSwitchToLogin, loading, error }) => {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -28,7 +29,7 @@ export const Register: React.FC<RegisterProps> = ({ onRegister, onSwitchToLogin,
       return;
     }
     
-    onRegister({ email, name, password });
+    onRegister({ email, name, phone, password });
   };
 
   return (
@@ -65,6 +66,18 @@ export const Register: React.FC<RegisterProps> = ({ onRegister, onSwitchToLogin,
               onChange={(e) => setName(e.target.value)}
               placeholder="Your Full Name"
               required
+              disabled={loading}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="phone">Phone Number (Optional)</label>
+            <input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 (555) 123-4567"
               disabled={loading}
             />
           </div>

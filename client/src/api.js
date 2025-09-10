@@ -29,6 +29,42 @@ export const logOut = () => {
   return axios.post(url('/logout'));
 };
 
+/** Handle user registration */
+export const register = (userData) => {
+  return axios.post(url('/register'), userData)
+    .then(x => x.data)
+    .catch(e => { 
+      throw new Error(e.response && e.response.data && e.response.data.error || 'Registration failed'); 
+    });
+};
+
+/** Check if system needs initialization */
+export const getSystemStatus = () => {
+  return axios.get(url('/system/status'))
+    .then(x => x.data)
+    .catch(e => { 
+      throw new Error(e.response && e.response.data && e.response.data.error || 'Failed to get system status'); 
+    });
+};
+
+/** Get user profile */
+export const getProfile = () => {
+  return axios.get(url('/profile'))
+    .then(x => x.data)
+    .catch(e => { 
+      throw new Error(e.response && e.response.data && e.response.data.error || 'Failed to get profile'); 
+    });
+};
+
+/** Update user profile */
+export const updateProfile = (profileData) => {
+  return axios.put(url('/profile'), profileData)
+    .then(x => x.data)
+    .catch(e => { 
+      throw new Error(e.response && e.response.data && e.response.data.error || 'Failed to update profile'); 
+    });
+};
+
 /** 
  * Function for checking which deployment urls exist.
  * 

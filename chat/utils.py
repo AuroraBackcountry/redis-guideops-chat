@@ -4,7 +4,7 @@ import random
 
 import bcrypt
 
-from chat import demo_data
+# Demo data import removed - using real user registration
 from chat.config import get_config
 
 SERVER_ID = random.uniform(0, 322321)
@@ -78,17 +78,14 @@ def create_private_room(user1, user2):
 
 
 def init_redis():
-    # We store a counter for the total users and increment it on each register
+    # Initialize basic Redis structure without demo users
     total_users_exist = redis_client.exists("total_users")
     if not total_users_exist:
         # This counter is used for the id
         redis_client.set("total_users", 0)
-        # Some rooms have pre-defined names. When the clients attempts to fetch a room, an additional lookup
-        # is handled to resolve the name.
-        # Rooms with private messages don't have a name
+        # Create the General room
         redis_client.set(f"room:0:name", "General")
-
-        demo_data.create()
+        print("✅ Redis initialized - ready for first user registration")
 
 # We use event stream for pub sub. A client connects to the stream endpoint and listens for the messages
 

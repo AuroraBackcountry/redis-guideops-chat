@@ -49,17 +49,8 @@ def io_join_room(id_room):
 def io_on_message(message):
     """Handle incoming message, make sure it's send to the correct room."""
 
-    def escape(htmlstring):
-        """Clean up html from the incoming string"""
-        escapes = {'"': "&quot;", "'": "&#39;", "<": "&lt;", ">": "&gt;"}
-        # This is done first to prevent escaping other escapes.
-        htmlstring = htmlstring.replace("&", "&amp;")
-        for seq, esc in escapes.items():
-            htmlstring = htmlstring.replace(seq, esc)
-        return htmlstring
-
-    # Make sure nothing illegal is sent here.
-    message["message"] = escape(message["message"])
+    # No HTML escaping needed - messages are displayed as plain text
+    # The original escape function was causing display issues with apostrophes and quotes
     # The user might be set as offline if he tried to access the chat from another tab, pinging by message
     # resets the user online status
     utils.redis_client.sadd("online_users", message["from"])

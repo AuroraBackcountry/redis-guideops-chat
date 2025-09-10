@@ -3,6 +3,41 @@ import bcrypt
 import json
 import time
 from chat import utils
+
+def get_user_data(user_id):
+    """
+    Get user data following Redis best practices (simple and clean)
+    Based on Redis documentation: HGETALL user:{id}
+    """
+    if not user_id:
+        return None
+        
+    user_data = redis_client.hgetall(f"user:{user_id}")
+    if not user_data:
+        return None
+    
+    # Core fields following Redis documentation
+    user_id_str = str(user_id)
+    first_name = user_data.get(b"first_name", "").decode('utf-8')
+    last_name = user_data.get(b"last_name", "").decode('utf-8')
+    email = user_data.get(b"email", user_data.get(b"username", "")).decode('utf-8')
+    role = user_data.get(b"role", "user").decode('utf-8')
+    
+    # Create display name for UI
+    if first_name or last_name:
+        display_name = f"{first_name} {last_name}".strip()
+    else:
+        display_name = email
+    
+    # Simple user object (Redis best practices) - Clean order
+    return {
+        "id": user_id_str,
+        "email": email,
+        "first_name": first_name,
+        "last_name": last_name,
+        "username": display_name,  # Display name for UI
+        "role": role
+    }
 from chat.utils import redis_client
 from chat.app import app
 
@@ -41,17 +76,39 @@ def login():
         print(f"Password verification error: {e}")
         return jsonify({"error": "Invalid credentials"}), 401
     
-    # Set user in session (original format)
+    # Set user in session with proper display name
     user_id_num = user_id_str.split(":")[-1]
-    username_from_redis = user_data.get(b"username", username.encode('utf-8')).decode('utf-8')
+    email = user_data.get(b"username", username.encode('utf-8')).decode('utf-8')
+    
+    # Get the actual name for display
+    first_name = user_data.get(b"first_name", "").decode('utf-8')
+    last_name = user_data.get(b"last_name", "").decode('utf-8')
+    
+    # Create display name from first_name + last_name, fallback to email
+    if first_name or last_name:
+        display_name = f"{first_name} {last_name}".strip()
+    else:
+        display_name = email
+    
+    # Get role for complete session data
+    role = user_data.get(b"role", "user".encode('utf-8')).decode('utf-8')
+    
     session["user"] = {
         "id": user_id_num,
-        "username": username_from_redis
+        "email": email,
+        "first_name": first_name,
+        "last_name": last_name,
+        "username": display_name,  # Use actual name for display
+        "role": role
     }
     
     return jsonify({
         "id": user_id_num,
-        "username": username_from_redis
+        "email": email,
+        "first_name": first_name,
+        "last_name": last_name,
+        "username": display_name,  # Use actual name for display
+        "role": role
     })
 
 @app.route("/me")
@@ -60,7 +117,299 @@ def me():
     user = session.get("user")
     if not user:
         return jsonify({"error": "Not logged in"}), 401
+    
+    # Ensure we return the enhanced user data with proper display name
+    user_id = user.get("id")
+    if user_id:
+        # Get fresh user data from Redis to ensure consistency
+        user_data = redis_client.hgetall(f"user:{user_id}")
+        if user_data:
+            first_name = user_data.get(b"first_name", "").decode('utf-8')
+            last_name = user_data.get(b"last_name", "").decode('utf-8')
+            email = user_data.get(b"email", user_data.get(b"username", "").encode('utf-8')).decode('utf-8')
+            
+            # Create display name
+            if first_name or last_name:
+                display_name = f"{first_name} {last_name}".strip()
+            else:
+                display_name = email
+            
+            # Return clean ordered user structure
+            return jsonify({
+                "id": user_id,
+                "email": email,
+                "first_name": first_name,
+                "last_name": last_name,
+                "username": display_name,  # Use actual name for display
+                "role": user_data.get(b"role", "user").decode('utf-8')
+            })
+    
     return jsonify(user)
+
+@app.route("/system/status")
+def system_status():
+    """Check if system needs initialization (first user)"""
+    total_users_count = redis_client.get("total_users")
+    needs_initialization = not total_users_count or int(total_users_count.decode('utf-8')) == 0
+    
+    return jsonify({
+        "needs_initialization": needs_initialization,
+        "total_users": int(total_users_count.decode('utf-8')) if total_users_count else 0,
+        "message": "System ready for account owner setup" if needs_initialization else "System initialized"
+    })
+
+@app.route("/debug/session")
+def debug_session():
+    """Debug endpoint to check current session user data"""
+    user = session.get("user")
+    if not user:
+        return jsonify({"error": "No session user"}), 401
+    
+    # Get fresh Redis data using simple function
+    user_id = user.get("id")
+    fresh_user = get_user_data(user_id)
+    
+    return jsonify({
+        "current_session_user": user,
+        "fresh_redis_user": fresh_user,
+        "data_consistent": user.get("username") == fresh_user.get("username") if fresh_user else False
+    })
+
+@app.route("/debug/all-users")
+def debug_all_users():
+    """Debug endpoint - Simple Redis user data"""
+    total_users = redis_client.get("total_users")
+    if not total_users:
+        return jsonify({"error": "No users found"})
+    
+    all_users = []
+    for i in range(1, int(total_users.decode('utf-8')) + 1):
+        user = get_user_data(i)
+        if user:
+            all_users.append(user)
+    
+    return jsonify({
+        "total_users": int(total_users.decode('utf-8')),
+        "users": all_users
+    })
+
+@app.route("/register", methods=["POST"])
+def register():
+    """Register new user"""
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ["name", "email", "password"]
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({"error": f"{field} is required"}), 400
+    
+    name = data["name"]
+    email = data["email"]
+    password = data["password"]
+    phone = data.get("phone", "")  # Optional phone number
+    
+    # Check if user already exists (by email as username)
+    username_key = f"username:{email}"
+    existing_user = redis_client.get(username_key)
+    
+    if existing_user:
+        return jsonify({"error": "User with this email already exists"}), 409
+    
+    # Validate password length
+    if len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+    
+    # Create new user
+    try:
+        # Check if this is the first user (account owner)
+        total_users_count = redis_client.get("total_users")
+        is_first_user = not total_users_count or int(total_users_count.decode('utf-8')) == 0
+        
+        # Generate unique user ID
+        user_id = str(redis_client.incr("total_users"))
+        
+        # Hash password
+        import bcrypt
+        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(10))
+        
+        # Parse name into first/last name
+        name_parts = name.strip().split(" ", 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
+        
+        # Determine role: First user = super_admin, others = user
+        role = "super_admin" if is_first_user else "user"
+        
+        # Create user profile
+        user_profile = {
+            "id": user_id,
+            "username": email,  # Use email as username
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": email,
+            "phone": phone,
+            "role": role,
+            "avatar_url": "",
+            "created_at": str(time.time()),
+            "last_seen": str(time.time()),
+            "password": hashed_password,
+            "is_account_owner": "true" if is_first_user else "false"
+        }
+        
+        # Store user data
+        user_key = f"user:{user_id}"
+        redis_client.hmset(user_key, user_profile)
+        
+        # Create email -> user_id mapping
+        redis_client.set(username_key, user_key)
+        
+        # Add user to general room
+        redis_client.sadd(f"user:{user_id}:rooms", "0")
+        
+        # Set user in session
+        session["user"] = {
+            "id": user_id,
+            "username": email,
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": email,
+            "phone": phone,
+            "role": role,
+            "is_account_owner": is_first_user
+        }
+        
+        success_message = "Account created successfully! You are the account owner." if is_first_user else "User created successfully"
+        
+        return jsonify({
+            "id": user_id,
+            "username": email,
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": email,
+            "phone": phone,
+            "role": role,
+            "is_account_owner": is_first_user,
+            "message": success_message
+        }), 201
+        
+    except Exception as e:
+        print(f"Registration error: {e}")
+        return jsonify({"error": "Failed to create user"}), 500
+
+@app.route("/profile", methods=["GET"])
+def get_profile():
+    """Get current user profile"""
+    user = session.get("user")
+    if not user:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    # Get full user data from Redis
+    user_data = redis_client.hgetall(f"user:{user['id']}")
+    if not user_data:
+        return jsonify({"error": "User not found"}), 404
+    
+    profile = {
+        "id": user["id"],
+        "username": user_data.get(b"username", "").decode('utf-8'),
+        "first_name": user_data.get(b"first_name", "").decode('utf-8'),
+        "last_name": user_data.get(b"last_name", "").decode('utf-8'),
+        "email": user_data.get(b"email", "").decode('utf-8'),
+        "role": user_data.get(b"role", "user").decode('utf-8'),
+        "avatar_url": user_data.get(b"avatar_url", "").decode('utf-8'),
+        "created_at": user_data.get(b"created_at", "").decode('utf-8'),
+        "last_seen": user_data.get(b"last_seen", "").decode('utf-8')
+    }
+    
+    return jsonify(profile)
+
+@app.route("/profile", methods=["PUT"])
+def update_profile():
+    """Update user profile"""
+    user = session.get("user")
+    if not user:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json()
+    user_key = f"user:{user['id']}"
+    
+    # Get current user data
+    current_data = redis_client.hgetall(user_key)
+    if not current_data:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Update allowed fields
+    updatable_fields = ["first_name", "last_name", "avatar_url"]
+    updates = {}
+    
+    for field in updatable_fields:
+        if field in data:
+            updates[field] = data[field]
+    
+    if updates:
+        # Update last_seen timestamp
+        updates["last_seen"] = str(time.time())
+        
+        # Update Redis
+        redis_client.hmset(user_key, updates)
+        
+        # Update session
+        session["user"].update(updates)
+    
+    return jsonify({"message": "Profile updated successfully", "updates": updates})
+
+@app.route("/admin/users", methods=["GET"])
+def admin_list_users():
+    """Admin: List all users"""
+    user = session.get("user")
+    if not user or user.get("role") not in ["admin", "super_admin"]:
+        return jsonify({"error": "Admin access required"}), 403
+    
+    # Get total users count
+    total_users = redis_client.get("total_users")
+    if not total_users:
+        return jsonify([])
+    
+    users = []
+    for i in range(1, int(total_users.decode('utf-8')) + 1):
+        user_data = redis_client.hgetall(f"user:{i}")
+        if user_data:
+            users.append({
+                "id": str(i),
+                "username": user_data.get(b"username", "").decode('utf-8'),
+                "first_name": user_data.get(b"first_name", "").decode('utf-8'),
+                "last_name": user_data.get(b"last_name", "").decode('utf-8'),
+                "email": user_data.get(b"email", "").decode('utf-8'),
+                "role": user_data.get(b"role", "user").decode('utf-8'),
+                "created_at": user_data.get(b"created_at", "").decode('utf-8'),
+                "last_seen": user_data.get(b"last_seen", "").decode('utf-8')
+            })
+    
+    return jsonify(users)
+
+@app.route("/admin/users/<user_id>/role", methods=["PUT"])
+def admin_update_user_role(user_id):
+    """Admin: Update user role"""
+    admin_user = session.get("user")
+    if not admin_user or admin_user.get("role") != "super_admin":
+        return jsonify({"error": "Super admin access required"}), 403
+    
+    data = request.get_json()
+    new_role = data.get("role")
+    
+    if new_role not in ["user", "admin", "super_admin"]:
+        return jsonify({"error": "Invalid role"}), 400
+    
+    user_key = f"user:{user_id}"
+    user_data = redis_client.hgetall(user_key)
+    
+    if not user_data:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Update role
+    redis_client.hset(user_key, "role", new_role)
+    
+    return jsonify({"message": f"User role updated to {new_role}"})
 
 @app.route("/logout", methods=["POST"])
 def logout():
@@ -70,19 +419,15 @@ def logout():
 
 @app.route("/users/online")
 def get_online_users():
-    """Get online users"""
+    """Get online users - Simple Redis pattern"""
     online_user_ids = redis_client.smembers("online_users")
     online_users = []
     
     for user_id_bytes in online_user_ids:
         user_id = user_id_bytes.decode('utf-8')
-        user_data = redis_client.hgetall(f"user:{user_id}")
-        if user_data:
-            username = user_data.get(b"username", f"User{user_id}".encode('utf-8')).decode('utf-8')
-            online_users.append({
-                "id": user_id,
-                "username": username
-            })
+        user = get_user_data(user_id)
+        if user:
+            online_users.append(user)
     
     return jsonify(online_users)
 
@@ -91,7 +436,7 @@ def get_rooms(user_id):
     """Get rooms for user"""
     room_ids = redis_client.smembers(f"user:{user_id}:rooms")
     rooms = []
-    
+
     for room_id_bytes in room_ids:
         room_id = room_id_bytes.decode('utf-8')
         room_name_bytes = redis_client.get(f"room:{room_id}:name")
@@ -99,7 +444,7 @@ def get_rooms(user_id):
         if room_name_bytes:
             room_name = room_name_bytes.decode('utf-8')
             rooms.append({
-                "id": room_id,
+                    "id": room_id,
                 "name": room_name,
                 "names": [room_name]  # Add names array for frontend compatibility
             })
@@ -132,6 +477,18 @@ def get_messages(room_id):
 def serve_frontend():
     """Serve the React frontend"""
     return app.send_static_file('index.html')
+
+@app.route("/test")
+def test_registration():
+    """Serve registration test page"""
+    with open("test_registration.html", "r") as f:
+        return f.read()
+
+@app.route("/register-page")
+def beautiful_registration():
+    """Serve beautiful registration page that matches login design"""
+    with open("beautiful_register.html", "r") as f:
+        return f.read()
 
 @app.route("/stream")
 def stream():
@@ -337,18 +694,14 @@ def admin_panel():
 
 @app.route("/users")
 def get_users():
-    """Get users by IDs"""
+    """Get users by IDs - Simple Redis pattern"""
     user_ids = request.args.getlist('ids[]')
     users = []
     
     for user_id in user_ids:
-        user_data = redis_client.hgetall(f"user:{user_id}")
-        if user_data:
-            username = user_data.get(b"username", f"User{user_id}".encode('utf-8')).decode('utf-8')
-            users.append({
-                "id": user_id,
-                "username": username
-            })
+        user = get_user_data(user_id)
+        if user:
+            users.append(user)
     
     return jsonify(users)
 

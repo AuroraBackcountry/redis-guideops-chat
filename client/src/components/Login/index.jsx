@@ -5,18 +5,58 @@ import Logo from "../Logo";
 import "./style.css";
 import { useEffect } from "react";
 
-const DEMO_USERS = ["Pablo", "Joe", "Mary", "Alex"];
-
 export default function Login({ onLogIn }) {
-  const [username, setUsername] = useState(
-    () => DEMO_USERS[Math.floor(Math.random() * DEMO_USERS.length)]
-  );
-  const [password, setPassword] = useState("password123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showRegister, setShowRegister] = useState(false);
+  const [registerData, setRegisterData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: ""
+  });
   const [error, setError] = useState(null);
 
   const onSubmit = async (event) => {
     event.preventDefault();
     onLogIn(username, password, setError);
+  };
+
+  const onRegisterSubmit = async (event) => {
+    event.preventDefault();
+    
+    if (registerData.password !== registerData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    
+    if (registerData.password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+    
+    try {
+      const { register } = await import("../../api");
+      const result = await register({
+        name: registerData.name,
+        email: registerData.email,
+        phone: registerData.phone,
+        password: registerData.password
+      });
+      
+      // Show success message for account owner
+      if (result.is_account_owner) {
+        setError(`🎉 ${result.message}`);
+        setTimeout(() => setError(null), 5000);
+      }
+      
+      // Auto-login after successful registration
+      onLogIn(registerData.email, registerData.password, setError);
+      
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -41,12 +81,14 @@ export default function Login({ onLogIn }) {
               }}
             >
               <div className="col text-primary text-left">
-                <h3 className="font-size-15">Welcome Back !</h3>
-                <p>Sign in to continue</p>
+                <h3 className="font-size-15">
+                  {showRegister ? "Join GuideOps!" : "Welcome Back!"}
+                </h3>
+                <p>{showRegister ? "Create your account" : "Sign in to continue"}</p>
               </div>
               <div className="col align-self-end">
                 <img
-                  alt="welcome back"
+                  alt="welcome"
                   style={{ maxWidth: "100%" }}
                   src={`${process.env.PUBLIC_URL}/welcome-back.png`}
                 />
@@ -69,127 +111,150 @@ export default function Login({ onLogIn }) {
             </div>
           </div>
 
-          <form
-            className="bg-white text-left px-4"
-            style={{
-              paddingTop: 58,
-              borderBottomLeftRadius: 4,
-              borderBottomRightRadius: 4,
-            }}
-            onSubmit={onSubmit}
-          >
-            <label className="font-size-12">Name</label>
-
-            <div className="username-select mb-3">
-              <UsernameSelect
-                username={username}
-                setUsername={setUsername}
-                names={DEMO_USERS}
+          {!showRegister ? (
+            // Login Form
+            <form
+              className="bg-white text-left px-4"
+              style={{
+                paddingTop: 58,
+                borderBottomLeftRadius: 4,
+                borderBottomRightRadius: 4,
+              }}
+              onSubmit={onSubmit}
+            >
+              <label className="font-size-12">Email</label>
+              <input
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                type="email"
+                className="form-control mb-3"
+                placeholder="Enter your email"
+                required
               />
-            </div>
 
-            <label htmlFor="inputPassword" className="font-size-12">
-              Password
-            </label>
-            <input
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
-              id="inputPassword"
-              className="form-control"
-              placeholder="Password"
-              required
-            />
-            <div style={{ height: 30 }} />
-            <button className="btn btn-lg btn-primary btn-block" type="submit">
-              Sign in
-            </button>
-            <div className="login-error-anchor">
-              <div className="toast-box">
-                <Toast
-                  style={{ minWidth: 277 }}
-                  onClose={() => setError(null)}
-                  show={error !== null}
-                  delay={3000}
-                  autohide
+              <label htmlFor="inputPassword" className="font-size-12">
+                Password
+              </label>
+              <input
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                type="password"
+                id="inputPassword"
+                className="form-control"
+                placeholder="Password"
+                required
+              />
+              <div style={{ height: 30 }} />
+              <button className="btn btn-lg btn-primary btn-block" type="submit">
+                Sign In
+              </button>
+              <div className="text-center mt-3">
+                <button
+                  type="button"
+                  className="btn btn-link"
+                  onClick={() => setShowRegister(true)}
                 >
-                  <Toast.Header>
-                    <img
-                      src="holder.js/20x20?text=%20"
-                      className="rounded mr-2"
-                      alt=""
-                    />
-                    <strong className="mr-auto">Error</strong>
-                  </Toast.Header>
-                  <Toast.Body>{error}</Toast.Body>
-                </Toast>
+                  Don't have an account? Create Account
+                </button>
               </div>
+            </form>
+          ) : (
+            // Registration Form
+            <form
+              className="bg-white text-left px-4"
+              style={{
+                paddingTop: 58,
+                borderBottomLeftRadius: 4,
+                borderBottomRightRadius: 4,
+              }}
+              onSubmit={onRegisterSubmit}
+            >
+              <label className="font-size-12">Full Name</label>
+              <input
+                value={registerData.name}
+                onChange={(e) => setRegisterData({...registerData, name: e.target.value})}
+                type="text"
+                className="form-control mb-3"
+                placeholder="Enter your full name"
+                required
+              />
+
+              <label className="font-size-12">Email</label>
+              <input
+                value={registerData.email}
+                onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
+                type="email"
+                className="form-control mb-3"
+                placeholder="Enter your email"
+                required
+              />
+
+              <label className="font-size-12">Phone (Optional)</label>
+              <input
+                value={registerData.phone}
+                onChange={(e) => setRegisterData({...registerData, phone: e.target.value})}
+                type="tel"
+                className="form-control mb-3"
+                placeholder="+1 (555) 123-4567"
+              />
+
+              <label className="font-size-12">Password</label>
+              <input
+                value={registerData.password}
+                onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
+                type="password"
+                className="form-control mb-3"
+                placeholder="Create password (min 6 chars)"
+                required
+                minLength={6}
+              />
+
+              <label className="font-size-12">Confirm Password</label>
+              <input
+                value={registerData.confirmPassword}
+                onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
+                type="password"
+                className="form-control"
+                placeholder="Confirm your password"
+                required
+                minLength={6}
+              />
+              
+              <div style={{ height: 30 }} />
+              <button className="btn btn-lg btn-primary btn-block" type="submit">
+                Create Account
+              </button>
+              <div className="text-center mt-3">
+                <button
+                  type="button"
+                  className="btn btn-link"
+                  onClick={() => setShowRegister(false)}
+                >
+                  Already have an account? Sign In
+                </button>
+              </div>
+            </form>
+          )}
+          
+          <div className="login-error-anchor">
+            <div className="toast-box">
+              <Toast
+                style={{ minWidth: 277 }}
+                onClose={() => setError(null)}
+                show={error !== null}
+                delay={5000}
+                autohide={!error?.includes("🎉")}
+              >
+                <Toast.Body>
+                  <div className={error?.includes("🎉") ? "text-success" : "text-danger"}>
+                    {error}
+                  </div>
+                </Toast.Body>
+              </Toast>
             </div>
-            <div style={{ height: 30 }} />
-          </form>
+          </div>
         </div>
       </div>
     </>
   );
 }
-
-const UsernameSelect = ({ username, setUsername, names = [""] }) => {
-  const [open, setOpen] = useState(false);
-  const [width, setWidth] = useState(0);
-  const ref = useRef();
-  /** @ts-ignore */
-  const clientRectWidth = ref.current?.getBoundingClientRect().width;
-  useEffect(() => {
-    /** @ts-ignore */
-    setWidth(clientRectWidth);
-  }, [clientRectWidth]);
-
-  /** Click away listener */
-  useEffect(() => {
-    if (open) {
-      const listener = () => setOpen(false);
-      document.addEventListener("click", listener);
-      return () => document.removeEventListener("click", listener);
-    }
-  }, [open]);
-
-  /** Make the current div focused */
-  useEffect(() => {
-    if (open) {
-      /** @ts-ignore */
-      ref.current?.focus();
-    }
-  }, [open]);
-
-  return (
-    <div
-      tabIndex={0}
-      ref={ref}
-      className={`username-select-dropdown ${open ? "open" : ""}`}
-      onClick={() => setOpen((o) => !o)}
-    >
-      <div className="username-select-row">
-        <div>{username}</div>
-        <div>
-          <svg width={24} height={24}>
-            <path d="M7 10l5 5 5-5z" fill="#333" />
-          </svg>
-        </div>
-      </div>
-      <div
-        style={{ width: width }}
-        className={`username-select-block ${open ? "open" : ""}`}
-      >
-        {names.map((name) => (
-          <div
-            className="username-select-block-item"
-            key={name}
-            onClick={() => setUsername(name)}
-          >
-            {name}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
