@@ -36,7 +36,9 @@ def run_app():
             pass
 
     # we need socketio.run() instead of app.run() bc we need to use the eventlet server
-    socketio.run(app, port=port, debug=True, use_reloader=True)
+    # Production mode: disable debug and reloader
+    is_production = os.environ.get("FLASK_ENV") == "production"
+    socketio.run(app, port=port, debug=not is_production, use_reloader=not is_production, host='0.0.0.0')
 
 
 # this was rewritten from decorators so we can move this methods to another file
