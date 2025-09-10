@@ -103,3 +103,51 @@ export const getRooms = async (userId) => {
 };
 
 export const getEventSource = () => new EventSource(url('/stream'));
+
+// ============================================================================
+// ENHANCED REDIS API FUNCTIONS
+// ============================================================================
+
+/** Create a new channel */
+export const createChannel = async (name, type = 'public', description = '') => {
+  return axios.post(url('/api/channels'), {
+    name,
+    type,
+    description
+  }).then(x => x.data);
+};
+
+/** Get channel details */
+export const getChannel = async (channelId) => {
+  return axios.get(url(`/api/channels/${channelId}`)).then(x => x.data);
+};
+
+/** Get channel members */
+export const getChannelMembers = async (channelId) => {
+  return axios.get(url(`/api/channels/${channelId}/members`)).then(x => x.data);
+};
+
+/** Send message to channel using new API */
+export const sendChannelMessage = async (channelId, text, attachments = []) => {
+  return axios.post(url(`/api/channels/${channelId}/messages`), {
+    text,
+    attachments
+  }).then(x => x.data);
+};
+
+/** Get channel messages using new API */
+export const getChannelMessages = async (channelId, offset = 0, limit = 50) => {
+  return axios.get(url(`/api/channels/${channelId}/messages`), {
+    params: { offset, limit }
+  }).then(x => x.data);
+};
+
+/** Create DM channel */
+export const createDM = async (userId) => {
+  return axios.post(url(`/api/dm/${userId}`)).then(x => x.data);
+};
+
+/** Get user profile */
+export const getUserProfile = async (userId) => {
+  return axios.get(url(`/api/users/${userId}`)).then(x => x.data);
+};

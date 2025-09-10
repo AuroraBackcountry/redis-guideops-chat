@@ -44,7 +44,7 @@ def get_messages(room_id=0, offset=0, size=50):
 def hmget(key, key2):
     """Wrapper around hmget to unpack bytes from hmget"""
     result = redis_client.hmget(key, key2)
-    return list(map(lambda x: x.decode("utf-8"), result))
+    return list(map(lambda x: x.decode("utf-8") if x is not None else "Unknown", result))
 
 
 def get_private_room_id(user1, user2):
@@ -78,6 +78,10 @@ def create_private_room(user1, user2):
 
 
 def init_redis():
+    # Initialize enhanced Redis structure first
+    from chat.redis_models import init_enhanced_redis
+    init_enhanced_redis()
+    
     # We store a counter for the total users and increment it on each register
     total_users_exist = redis_client.exists("total_users")
     if not total_users_exist:

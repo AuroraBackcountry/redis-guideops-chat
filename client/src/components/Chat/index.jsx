@@ -4,6 +4,7 @@ import ChatList from "./components/ChatList";
 import MessageList from "./components/MessageList";
 import TypingArea from "./components/TypingArea";
 import useChatHandlers from "./use-chat-handlers";
+import { createChannel } from "../../api";
 
 /**
  * @param {{
@@ -28,6 +29,22 @@ export default function Chat({ onLogOut, user, onMessageSend }) {
     users,
   } = useChatHandlers(user);
 
+  const handleCreateChannel = async () => {
+    const name = prompt('Enter channel name:');
+    if (name && name.trim()) {
+      try {
+        const newChannel = await createChannel(name.trim(), 'public', `Channel created by ${user.username}`);
+        console.log('✅ Created channel:', newChannel);
+        alert(`Channel "${name}" created successfully! Refresh the page to see it.`);
+        // For now, refresh to see the new channel
+        window.location.reload();
+      } catch (error) {
+        console.error('❌ Failed to create channel:', error);
+        alert('Failed to create channel. Please try again.');
+      }
+    }
+  };
+
   return (
     <div className="container py-5 px-4">
       <div className="chat-body row overflow-hidden shadow bg-light rounded">
@@ -39,6 +56,29 @@ export default function Chat({ onLogOut, user, onMessageSend }) {
             currentRoom={currentRoom}
             dispatch={dispatch}
           />
+          
+          {/* Enhanced Features Panel */}
+          <div className="enhanced-features" style={{ 
+            padding: '15px', 
+            borderTop: '1px solid #eee',
+            backgroundColor: '#f8f9fa'
+          }}>
+            <h6 style={{ marginBottom: '10px', color: '#495057' }}>Enhanced Features</h6>
+            <button 
+              className="btn btn-primary btn-sm mb-2" 
+              style={{ width: '100%' }}
+              onClick={handleCreateChannel}
+            >
+              + Create Channel
+            </button>
+            <small className="text-muted">
+              Redis-powered features:<br/>
+              ✅ Enhanced user profiles<br/>
+              ✅ Channel management<br/>
+              ✅ AI assistant ready<br/>
+              🔄 Real-time updates (coming)
+            </small>
+          </div>
         </div>
         {/* Chat Box*/}
         <div className="col-8 px-0 flex-column bg-white rounded-lg">

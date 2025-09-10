@@ -8,8 +8,9 @@ def auth_middleware(f):
 
     @wraps(f)
     def __auth_middleware(*args, **kwargs):
-        if not session["user"]:
-            return jsonify(None), 403
+        user = session.get("user", None)
+        if not user:
+            return jsonify({"error": "Authentication required"}), 403
         return f(*args, **kwargs)
 
     return __auth_middleware

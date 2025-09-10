@@ -1,0 +1,61 @@
+# ============================================================================
+# GuideOps Chat - Environment Configuration Template
+# Copy this to .env and customize for your environment
+# ============================================================================
+
+# ============================================================================
+# REDIS CONFIGURATION
+# ============================================================================
+
+# Local Development (what you're using now)
+REDIS_ENDPOINT_URL=127.0.0.1:6379
+REDIS_PASSWORD=
+
+# Production Examples:
+# REDIS_ENDPOINT_URL=redis-12345.c1.us-east-1-1.ec2.cloud.redislabs.com:12345
+# REDIS_PASSWORD=your_redis_password_here
+
+# ============================================================================
+# FLASK CONFIGURATION  
+# ============================================================================
+
+# Environment
+CHAT_CONFIG=chat.config.ConfigDev
+
+# Security (CHANGE THIS!)
+SECRET_KEY=your_super_secret_key_change_this_in_production
+
+# Server
+PORT=5000
+
+# ============================================================================
+# AI INTEGRATION
+# ============================================================================
+
+# FastAPI AI Server
+FASTAPI_PORT=3002
+N8N_WEBHOOK_URL=https://n8n-aurora-ai.com/webhook/stream/query-ai
+
+# ============================================================================
+# FRONTEND
+# ============================================================================
+
+# React App URLs
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_FASTAPI_URL=http://localhost:3002
+
+# ============================================================================
+# PRODUCTION EXAMPLES
+# ============================================================================
+
+# === For Railway ===
+# REDIS_ENDPOINT_URL=redis.railway.internal:6379
+# REDIS_PASSWORD=your_railway_redis_password
+
+# === For Render ===
+# REDIS_ENDPOINT_URL=your-redis.render.com:6379
+# REDIS_PASSWORD=your_render_redis_password
+
+# === For Fly.io ===
+# REDIS_ENDPOINT_URL=your-redis.fly.dev:6379
+# REDIS_PASSWORD=your_fly_redis_password

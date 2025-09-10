@@ -2,6 +2,7 @@
 import React, { useEffect, useCallback } from "react";
 import Login from "./components/Login";
 import Chat from "./components/Chat";
+import { ChatRedisEnhanced } from "./components/Chat/ChatRedisEnhanced";
 import { getOnlineUsers, getRooms } from "./api";
 import useAppStateContext, { AppContext } from "./state";
 import moment from "moment";
@@ -39,7 +40,13 @@ const App = () => {
         {showLogin ? (
           <Login onLogIn={onLogIn} />
         ) : (
-          <Chat user={user} onMessageSend={onMessageSend} onLogOut={onLogOut} />
+          <>
+            {/* Basic Chat (current working version) */}
+            <Chat user={user} onMessageSend={onMessageSend} onLogOut={onLogOut} />
+            
+            {/* Enhanced Chat with Stream UI (Redis backend) - Uncomment to test */}
+            {/* <ChatRedisEnhanced user={user} onMessageSend={onMessageSend} onLogOut={onLogOut} /> */}
+          </>
         )}
       </div>
     </AppContext.Provider>
