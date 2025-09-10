@@ -11,9 +11,11 @@ class Config(object):
     if redis_url:
         # Railway provides REDIS_URL (redis://user:pass@host:port)
         from urllib.parse import urlparse
+        print(f"[DEBUG] Redis URL: {redis_url}")  # Debug logging
         url = urlparse(redis_url)
+        print(f"[DEBUG] Parsed - Host: {url.hostname}, Port: {url.port}, Password: {'***' if url.password else None}")
         REDIS_HOST = url.hostname
-        REDIS_PORT = url.port
+        REDIS_PORT = url.port or 6379  # Default Redis port if not specified
         REDIS_PASSWORD = url.password
     else:
         # Fallback to individual environment variables
