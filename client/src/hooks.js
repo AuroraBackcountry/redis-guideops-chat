@@ -89,7 +89,16 @@ const useSocket = (user, dispatch) => {
       if (socket !== null) {
         socket.connect();
       } else {
-        socketRef.current = io();
+        // Configure Socket.IO for split deployment
+        const socketURL = process.env.NODE_ENV === 'production' 
+          ? process.env.REACT_APP_API_URL || 'https://redis-guideops-chat-production.up.railway.app'
+          : '';
+        
+        console.log(`[Socket.IO] Connecting to: ${socketURL || 'localhost'}`);
+        socketRef.current = io(socketURL, {
+          withCredentials: true,
+          transports: ['websocket', 'polling']
+        });
       }
       setConnected(true);
     }

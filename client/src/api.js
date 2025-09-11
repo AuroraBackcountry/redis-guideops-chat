@@ -1,11 +1,18 @@
 import axios from 'axios';
 axios.defaults.withCredentials = true;
 
-const BASE_URL = '';
+// Configure API base URL for split deployment
+const BASE_URL = process.env.NODE_ENV === 'production' 
+  ? process.env.REACT_APP_API_URL || 'https://redis-guideops-chat-production.up.railway.app'
+  : '';
 
 export const MESSAGES_TO_LOAD = 15;
 
 const url = x => `${BASE_URL}${x}`;
+
+// Log API configuration for debugging
+console.log(`[API] Environment: ${process.env.NODE_ENV}`);
+console.log(`[API] Base URL: ${BASE_URL}`);
 
 /** Checks if there's an existing session. */
 export const getMe = () => {

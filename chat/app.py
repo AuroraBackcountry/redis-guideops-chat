@@ -11,15 +11,28 @@ from chat.config import get_config
 from chat.socketio_signals import io_connect, io_disconnect, io_join_room, io_on_message
 
 sess = Session()
-# Configure Flask app with proper static folder
-import os
-# Use absolute path for static folder
-static_folder = os.path.abspath("client/build") if os.path.exists("client/build") else os.path.abspath("../client/build") if os.path.exists("../client/build") else None
-print(f"[DEBUG] Static folder: {static_folder}")
-app = Flask(__name__, static_url_path="", static_folder=static_folder)
+# Configure Flask app for API-only mode (no static serving)
+# Static files will be served by Vercel
+print("[DEBUG] Flask configured for API-only mode - static files served by Vercel")
+app = Flask(__name__)
 app.config.from_object(get_config())
-CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Configure CORS for Vercel frontend
+CORS(app, supports_credentials=True, origins=[
+    "http://localhost:3000",  # Local development
+    "https://*.vercel.app",   # Vercel deployment domains
+    "https://vercel.app",     # Vercel custom domains
+])
+
+# Configure Socket.IO CORS for cross-origin communication
+socketio = SocketIO(app, 
+    cors_allowed_origins=[
+        "http://localhost:3000",  # Local development
+        "https://*.vercel.app",   # Vercel deployment domains
+        "https://vercel.app",     # Vercel custom domains
+    ],
+    cors_credentials=True
+)
 
 
 def run_app():

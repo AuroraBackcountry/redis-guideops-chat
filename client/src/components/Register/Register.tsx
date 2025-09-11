@@ -3,7 +3,7 @@ import guideOpsLogo from '../../assets/guideops-logo.png';
 import './Register.css';
 
 interface RegisterProps {
-  onRegister: (userData: { email: string; name: string; password: string }) => void;
+  onRegister: (userData: { email: string; name: string; phone: string; password: string }) => void;
   onSwitchToLogin: () => void;
   loading?: boolean;
   error?: string;

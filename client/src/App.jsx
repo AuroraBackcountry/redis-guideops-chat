@@ -2,7 +2,7 @@
 import React, { useEffect, useCallback } from "react";
 import Login from "./components/Login";
 import Chat from "./components/Chat";
-import { ChatRedisEnhanced } from "./components/Chat/ChatRedisEnhanced";
+// import { ChatRedisEnhanced } from "./components/Chat/ChatRedisEnhanced"; // Commented out for split deployment
 import { getOnlineUsers, getRooms } from "./api";
 import useAppStateContext, { AppContext } from "./state";
 import moment from "moment";

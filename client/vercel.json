@@ -1,0 +1,28 @@
+{
+  "name": "guideops-chat-frontend",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "buildCommand": "npm run build",
+        "distDir": "build"
+      }
+    }
+  ],
+  "env": {
+    "REACT_APP_API_URL": "https://redis-guideops-chat-production.up.railway.app"
+  },
+  "build": {
+    "env": {
+      "NODE_VERSION": "18"
+    }
+  },
+  "functions": {},
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
