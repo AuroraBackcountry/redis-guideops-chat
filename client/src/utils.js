@@ -48,23 +48,65 @@ export const getAvatar = (username) => {
   return av;
 };
 
+// Persistent user cache using localStorage
+const USER_CACHE_KEY = 'guideops_user_cache';
+
+const getUserCache = () => {
+  try {
+    const cached = localStorage.getItem(USER_CACHE_KEY);
+    return cached ? JSON.parse(cached) : {};
+  } catch {
+    return {};
+  }
+};
+
+const setUserCache = (users) => {
+  try {
+    localStorage.setItem(USER_CACHE_KEY, JSON.stringify(users));
+  } catch {
+    // Ignore localStorage errors
+  }
+};
+
 export const populateUsersFromLoadedMessages = async (users, dispatch, messages) => {
+  // Get cached user data first
+  const cachedUsers = getUserCache();
+  
   const userIds = {};
   messages.forEach((message) => {
     userIds[message.from] = 1;
   });
 
   const ids = Object.keys(userIds).filter(
-    (id) => users[id] === undefined
+    (id) => users[id] === undefined && !cachedUsers[id]
   );
 
+  // First, use cached data if available
+  const cachedUsersToAdd = {};
+  Object.keys(userIds).forEach(id => {
+    if (users[id] === undefined && cachedUsers[id]) {
+      cachedUsersToAdd[id] = cachedUsers[id];
+    }
+  });
+
+  if (Object.keys(cachedUsersToAdd).length > 0) {
+    dispatch({
+      type: "append users",
+      payload: cachedUsersToAdd,
+    });
+  }
+
+  // Then fetch any remaining missing users
   if (ids.length !== 0) {
-    /** We need to fetch users first */
     const newUsers = await getUsers(ids);
+    
+    // Update cache with new users
+    const allUsers = { ...cachedUsers, ...newUsers };
+    setUserCache(allUsers);
+    
     dispatch({
       type: "append users",
       payload: newUsers,
     });
   }
-
 };

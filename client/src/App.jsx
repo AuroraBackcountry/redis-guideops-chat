@@ -117,23 +117,26 @@ const useAppHandlers = () => {
   useEffect(() => {
     /** @ts-ignore */
     if (Object.values(state.rooms).length === 0 && user !== null) {
-      /** First fetch online users, then get all users for complete data */
+      /** Load cached user data first, then fetch fresh data */
+      // Load cached users immediately (no API delay)
+      const cachedUsers = JSON.parse(localStorage.getItem('guideops_user_cache') || '{}');
+      if (Object.keys(cachedUsers).length > 0) {
+        dispatch({
+          type: "append users",
+          payload: cachedUsers,
+        });
+      }
+      
+      /** Then fetch online users and update cache */
       getOnlineUsers().then((users) => {
         dispatch({
           type: "append users",
           payload: users,
         });
         
-        // Also fetch all users to ensure we have complete user data for messages
-        const allUserIds = Array.from({length: 10}, (_, i) => (i + 1).toString());
-        getUsers(allUserIds).then((allUsers) => {
-          dispatch({
-            type: "append users", 
-            payload: allUsers,
-          });
-        }).catch(() => {
-          // Ignore errors - some user IDs might not exist
-        });
+        // Update cache with fresh data
+        const updatedCache = { ...cachedUsers, ...users };
+        localStorage.setItem('guideops_user_cache', JSON.stringify(updatedCache));
       });
       /** Then get rooms. */
       getRooms(user.id).then((rooms) => {
