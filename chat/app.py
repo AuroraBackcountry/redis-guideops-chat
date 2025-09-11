@@ -11,7 +11,10 @@ from chat.config import get_config
 from chat.socketio_signals import io_connect, io_disconnect, io_join_room, io_on_message
 
 sess = Session()
-app = Flask(__name__, static_url_path="", static_folder="../client/build")
+# Production-safe static folder handling
+import os
+static_folder = "../client/build" if os.path.exists("../client/build") else None
+app = Flask(__name__, static_url_path="", static_folder=static_folder)
 app.config.from_object(get_config())
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -20,8 +23,14 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 def run_app():
     # Create redis connection etc.
     # Here we initialize our database, create demo data (if it's necessary)
-    # TODO: maybe we need to do it for gunicorn run also?
-    utils.init_redis()
+    # Only initialize if not already done by gunicorn
+    try:
+        utils.redis_client.ping()
+        print("✅ Redis already initialized")
+    except:
+        print("🔧 Initializing Redis for direct execution")
+        utils.init_redis()
+    
     sess.init_app(app)
 
     # moved to this method bc it only applies to app.py direct launch
