@@ -1,0 +1,112 @@
+/**
+ * GuideOps Chat API v2 - Redis Streams
+ * Professional message handling with perfect attribution
+ */
+
+import axios from 'axios';
+
+// Configure for Redis Streams testing with live backend (Railway deployed)
+const BASE_URL = process.env.NODE_ENV === 'production' 
+  ? process.env.REACT_APP_API_URL || 'https://redis-guideops-chat-production.up.railway.app'
+  : 'https://redis-guideops-chat-production.up.railway.app'; // Use live backend for Redis Streams testing
+
+axios.defaults.withCredentials = true;
+
+const url = x => `${BASE_URL}${x}`;
+
+// Log API configuration
+console.log('[API v2] Redis Streams API initialized');
+console.log('[API v2] Base URL:', BASE_URL);
+
+/**
+ * Get messages using Redis Streams
+ * @param {string} roomId - Room identifier
+ * @param {number} count - Number of messages to retrieve (default 15)
+ * @param {string} beforeId - Stream ID for pagination (optional)
+ * @returns {Promise<{messages: Array, hasMore: boolean, oldestId: string, newestId: string}>}
+ */
+export const getMessagesV2 = (roomId, count = 15, beforeId = null) => {
+  const params = { count };
+  if (beforeId) {
+    params.before = beforeId;
+  }
+  
+  return axios.get(url(`/v2/rooms/${roomId}/messages`), { params })
+    .then(response => {
+      console.log(`[API v2] Retrieved ${response.data.messages.length} messages for room ${roomId}`);
+      return response.data;
+    })
+    .catch(error => {
+      console.error('[API v2] Error getting messages:', error);
+      throw error;
+    });
+};
+
+/**
+ * Send message using Redis Streams  
+ * @param {string} roomId - Room identifier
+ * @param {string} messageText - Message content
+ * @returns {Promise<Object>} Complete message object with stream ID
+ */
+export const sendMessageV2 = (roomId, messageText) => {
+  return axios.post(url(`/v2/rooms/${roomId}/messages`), {
+    message: messageText
+  })
+    .then(response => {
+      console.log(`[API v2] Message sent to room ${roomId}:`, response.data.id);
+      return response.data;
+    })
+    .catch(error => {
+      console.error('[API v2] Error sending message:', error);
+      throw error;
+    });
+};
+
+/**
+ * Clear all messages from room (admin only)
+ * @param {string} roomId - Room identifier  
+ * @returns {Promise<Object>} Operation result
+ */
+export const clearRoomMessagesV2 = (roomId) => {
+  return axios.delete(url(`/v2/rooms/${roomId}/clear`))
+    .then(response => {
+      console.log(`[API v2] Room ${roomId} cleared:`, response.data);
+      return response.data;
+    })
+    .catch(error => {
+      console.error('[API v2] Error clearing room:', error);
+      throw error;
+    });
+};
+
+/**
+ * Get Redis Streams system status
+ * @returns {Promise<Object>} System status and capabilities
+ */
+export const getSystemStatusV2 = () => {
+  return axios.get(url('/v2/system/status'))
+    .then(response => {
+      console.log('[API v2] System status:', response.data);
+      return response.data;
+    })
+    .catch(error => {
+      console.error('[API v2] Error getting system status:', error);
+      throw error;
+    });
+};
+
+/**
+ * Migrate to Redis Streams (super admin only)
+ * @returns {Promise<Object>} Migration result
+ */
+export const migrateToStreamsV2 = () => {
+  return axios.post(url('/v2/system/migrate'))
+    .then(response => {
+      console.log('[API v2] Migration completed:', response.data);
+      return response.data;
+    })
+    .catch(error => {
+      console.error('[API v2] Error migrating:', error);
+      throw error;
+    });
+};

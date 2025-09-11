@@ -1,9 +1,10 @@
 // @ts-check
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import MessageList from "../components/Chat/components/MessageList";
+import MessageListV2 from "../components/MessageListV2";
 import TypingArea from "../components/Chat/components/TypingArea";
 import useChatHandlers from "../components/Chat/use-chat-handlers";
+import { getMessagesV2, sendMessageV2 } from "../api-v2";
 
 /**
  * Chat Page - Main messaging interface
@@ -90,19 +91,16 @@ export default function ChatPage({ user, onMessageSend }) {
     setIsScrolling(false);
   };
   
-  const {
-    onLoadMoreMessages,
-    onUserClicked,
-    message,
-    setMessage,
-    rooms,
-    room,
-    currentRoom,
-    dispatch,
-    messageListElement,
-    messages,
-    users,
-  } = useChatHandlers(user);
+  // Redis Streams v2 state (simplified, focused)
+  const [messages, setMessages] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [oldestId, setOldestId] = useState(null);
+  const [message, setMessage] = useState("");
+  const messageListElement = React.useRef(null);
+  
+  // Get basic state for room and user info (keep existing for compatibility)
+  const { rooms, users, currentRoom, dispatch } = useChatHandlers(user);
 
   // Enhanced onUserClicked for multi-page architecture
   const handleUserClicked = async (userId) => {
@@ -122,12 +120,77 @@ export default function ChatPage({ user, onMessageSend }) {
     }
   };
 
-  // Set current room based on URL parameter
-  React.useEffect(() => {
-    if (roomId && roomId !== currentRoom) {
+  // Load messages using Redis Streams v2 API
+  const loadMessages = async (beforeId = null) => {
+    if (!roomId) return;
+    
+    try {
+      console.log(`[ChatPage] Loading messages for room ${roomId}${beforeId ? ` before ${beforeId}` : ''}`);
+      
+      const result = await getMessagesV2(roomId, 15, beforeId);
+      
+      if (beforeId) {
+        // Loading more (prepend older messages)
+        setMessages(prev => [...result.messages, ...prev]);
+      } else {
+        // Initial load
+        setMessages(result.messages);
+      }
+      
+      setHasMore(result.hasMore);
+      setOldestId(result.oldestId);
+      setLoading(false);
+      
+      console.log(`[ChatPage] Loaded ${result.messages.length} messages, hasMore: ${result.hasMore}`);
+      
+    } catch (error) {
+      console.error('[ChatPage] Error loading messages:', error);
+      setLoading(false);
+    }
+  };
+
+  const onLoadMoreMessages = () => {
+    if (hasMore && oldestId) {
+      loadMessages(oldestId);
+    }
+  };
+
+  // Load messages when room changes
+  useEffect(() => {
+    if (roomId) {
+      setLoading(true);
+      loadMessages();
+      // Set current room in global state for compatibility
       dispatch({ type: "set current room", payload: roomId });
     }
-  }, [roomId, currentRoom, dispatch]);
+  }, [roomId, dispatch]);
+
+  // Send message using Redis Streams
+  const handleSendMessage = async (messageText) => {
+    if (!messageText.trim() || !roomId) return;
+    
+    try {
+      console.log(`[ChatPage] Sending message to room ${roomId}`);
+      
+      const newMessage = await sendMessageV2(roomId, messageText.trim());
+      
+      // Add to local state (optimistic update)
+      setMessages(prev => [...prev, newMessage]);
+      
+      // Scroll to bottom
+      if (messageListElement.current) {
+        setTimeout(() => {
+          messageListElement.current.scrollTop = messageListElement.current.scrollHeight;
+        }, 50);
+      }
+      
+      console.log(`[ChatPage] Message sent: ${newMessage.id}`);
+      
+    } catch (error) {
+      console.error('[ChatPage] Error sending message:', error);
+      alert('Failed to send message. Please try again.');
+    }
+  };
 
   // Get current room data
   const currentRoomData = rooms[roomId || currentRoom] || rooms["0"];
@@ -184,15 +247,23 @@ export default function ChatPage({ user, onMessageSend }) {
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchCancel}
       >
-        <MessageList
-          messageListElement={messageListElement}
-          messages={messages}
-          room={currentRoomData}
-          onLoadMoreMessages={onLoadMoreMessages}
-          user={user}
-          onUserClicked={handleUserClicked}
-          users={users}
-        />
+        {loading ? (
+          <div className="d-flex justify-content-center align-items-center" style={{height: "100px"}}>
+            <div className="spinner-border" role="status">
+              <span className="sr-only">Loading messages...</span>
+            </div>
+          </div>
+        ) : (
+          <MessageListV2
+            messageListElement={messageListElement}
+            messages={messages}
+            hasMore={hasMore}
+            onLoadMoreMessages={onLoadMoreMessages}
+            user={user}
+            onUserClicked={handleUserClicked}
+            users={users}
+          />
+        )}
       </div>
 
       {/* Typing Area - Fixed at bottom */}
@@ -210,12 +281,8 @@ export default function ChatPage({ user, onMessageSend }) {
           setMessage={setMessage}
           onSubmit={(e) => {
             e.preventDefault();
-            onMessageSend(message.trim(), roomId || currentRoom);
+            handleSendMessage(message.trim());
             setMessage("");
-            
-            if (messageListElement.current) {
-              messageListElement.current.scrollTop = messageListElement.current.scrollHeight;
-            }
           }}
         />
       </div>
