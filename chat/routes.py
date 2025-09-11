@@ -454,14 +454,7 @@ def get_rooms(user_id):
     
     return jsonify(rooms)
 
-@app.route("/room/<room_id>/messages")
-def get_messages(room_id):
-    """Get messages for room"""
-    offset = int(request.args.get("offset", 0))
-    size = int(request.args.get("size", 50))
-    
-    messages = utils.get_messages(room_id, offset, size)
-    return jsonify(messages)
+# Removed duplicate route - using enhanced version with user data below
 
 @app.route("/")
 def api_status():
