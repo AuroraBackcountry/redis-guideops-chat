@@ -465,7 +465,8 @@ def get_messages(room_id):
 
 @app.route("/")
 def serve_frontend():
-    """Serve the beautiful React frontend"""
+    """Serve the beautiful React frontend - FORCE NEW DEPLOYMENT"""
+    # Added comment to force Railway to see code change
     return app.send_static_file('index.html')
 
 @app.route("/register-page")
