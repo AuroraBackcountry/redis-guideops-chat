@@ -141,6 +141,7 @@ const MessageList = ({
             let displayUser;
             if (isSelf) {
               // For current user messages, always use the logged-in user data
+              console.log(`[DEBUG] isSelf=true, user prop:`, user, `users state:`, users);
               displayUser = user; // Direct assignment, no lookup confusion
             } else {
               // For other user messages, resolve their data
