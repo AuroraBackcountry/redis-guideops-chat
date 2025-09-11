@@ -83,5 +83,6 @@ socketio.on_event("message", io_on_message)
 # routes moved to another file and we need to import it lately
 # bc they are using app from this file
 from chat import routes  # noqa
+from chat import routes_redis_streams  # noqa - Redis Streams v2 API
 
 application = app
