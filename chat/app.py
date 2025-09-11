@@ -18,17 +18,26 @@ app = Flask(__name__)
 app.config.from_object(get_config())
 
 # Configure CORS for Vercel frontend
-CORS(app, supports_credentials=True, origins=[
-    "http://localhost:3000",  # Local development
-    "https://*.vercel.app",   # Vercel deployment domains
-    "https://vercel.app",     # Vercel custom domains
-])
+CORS(app, 
+    supports_credentials=True,
+    origins=[
+        "http://localhost:3000",  # Local development
+        "https://guideops-chat-frontend.vercel.app",  # Vercel production URL
+        "https://guideops-chat-frontend-*.vercel.app",  # Vercel preview deployments
+        "https://*.vercel.app",   # Other Vercel domains
+        "https://vercel.app",     # Vercel custom domains
+    ],
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
 
 # Configure Socket.IO CORS for cross-origin communication
 socketio = SocketIO(app, 
     cors_allowed_origins=[
         "http://localhost:3000",  # Local development
-        "https://*.vercel.app",   # Vercel deployment domains
+        "https://guideops-chat-frontend.vercel.app",  # Vercel production URL
+        "https://guideops-chat-frontend-*.vercel.app",  # Vercel preview deployments
+        "https://*.vercel.app",   # Other Vercel domains
         "https://vercel.app",     # Vercel custom domains
     ],
     cors_credentials=True
