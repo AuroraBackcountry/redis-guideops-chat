@@ -11,9 +11,11 @@ from chat.config import get_config
 from chat.socketio_signals import io_connect, io_disconnect, io_join_room, io_on_message
 
 sess = Session()
-# Production-safe static folder handling
+# Configure Flask app with proper static folder
 import os
-static_folder = "../client/build" if os.path.exists("../client/build") else None
+# Use absolute path for static folder
+static_folder = os.path.abspath("client/build") if os.path.exists("client/build") else os.path.abspath("../client/build") if os.path.exists("../client/build") else None
+print(f"[DEBUG] Static folder: {static_folder}")
 app = Flask(__name__, static_url_path="", static_folder=static_folder)
 app.config.from_object(get_config())
 CORS(app)
