@@ -17,8 +17,18 @@ console.log(`[API] Base URL: ${BASE_URL}`);
 /** Checks if there's an existing session. */
 export const getMe = () => {
   return axios.get(url('/me'))
-    .then(x => x.data)
-    .catch(_ => null);
+    .then(x => {
+      console.log('[Session] Valid session found:', x.data);
+      // Store user data in localStorage as backup
+      localStorage.setItem('guideops_user', JSON.stringify(x.data));
+      return x.data;
+    })
+    .catch(error => {
+      console.log('[Session] No valid session:', error.response?.status);
+      // Clear any stale localStorage data
+      localStorage.removeItem('guideops_user');
+      return null;
+    });
 };
 
 /** Handle user log in */
@@ -26,14 +36,31 @@ export const login = (username, password) => {
   return axios.post(url('/login'), {
     username,
     password
-  }).then(x =>
-    x.data
-  )
-    .catch(e => { throw new Error(e.response && e.response.data && e.response.data.message); });
+  }).then(x => {
+    console.log('[Login] Successful login:', x.data);
+    // Store user data for session persistence
+    localStorage.setItem('guideops_user', JSON.stringify(x.data));
+    return x.data;
+  })
+    .catch(e => { 
+      console.log('[Login] Login failed:', e.response?.data?.message);
+      localStorage.removeItem('guideops_user');
+      throw new Error(e.response && e.response.data && e.response.data.message); 
+    });
 };
 
 export const logOut = () => {
-  return axios.post(url('/logout'));
+  return axios.post(url('/logout'))
+    .then(() => {
+      console.log('[Logout] Session cleared');
+      // Clear localStorage on logout
+      localStorage.removeItem('guideops_user');
+    })
+    .catch(error => {
+      console.log('[Logout] Error:', error);
+      // Clear localStorage even if logout fails
+      localStorage.removeItem('guideops_user');
+    });
 };
 
 /** Handle user registration */

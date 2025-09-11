@@ -2,6 +2,7 @@
 import { Toast } from "react-bootstrap";
 import React, { useState, useRef } from "react";
 import Logo from "../Logo";
+import welcomeScreen from "../../assets/welcome-screen.svg";
 import "./style.css";
 import { useEffect } from "react";
 
@@ -69,29 +70,54 @@ export default function Login({ onLogIn }) {
           }}
         >
           <div className="position-relative">
+            {/* Full-width welcome screen with text overlay */}
             <div
-              className="row no-gutters align-items-center"
               style={{
                 maxWidth: 400,
-                backgroundColor: "rgba(85, 110, 230, 0.25)",
-                paddingLeft: 20,
-                paddingRight: 20,
+                position: 'relative',
                 borderTopLeftRadius: 4,
                 borderTopRightRadius: 4,
+                overflow: 'hidden'
               }}
             >
-              <div className="col text-primary text-left">
-                <h3 className="font-size-15">
+              {/* Full-width SVG background */}
+              <img
+                alt="GuideOps Welcome"
+                style={{ 
+                  width: "100%",
+                  height: "140px",
+                  objectFit: "cover",
+                  display: "block"
+                }}
+                src={welcomeScreen}
+              />
+              
+              {/* Text overlay - Left side only */}
+              <div
+                className="position-absolute text-primary text-left"
+                style={{
+                  top: 20,
+                  left: 20,
+                  maxWidth: '50%', // Only use left half of the card
+                  zIndex: 2
+                }}
+              >
+                <h3 className="font-size-15" style={{ 
+                  textShadow: '0 1px 3px rgba(255,255,255,0.8)',
+                  fontWeight: '600',
+                  marginBottom: 5,
+                  textAlign: 'left'
+                }}>
                   {showRegister ? "Join GuideOps!" : "Welcome Back!"}
                 </h3>
-                <p>{showRegister ? "Create your account" : "Sign in to continue"}</p>
-              </div>
-              <div className="col align-self-end">
-                <img
-                  alt="welcome"
-                  style={{ maxWidth: "100%" }}
-                  src={`${process.env.PUBLIC_URL}/welcome-back.png`}
-                />
+                <p style={{ 
+                  textShadow: '0 1px 2px rgba(255,255,255,0.6)',
+                  margin: 0,
+                  fontSize: '14px',
+                  textAlign: 'left'
+                }}>
+                  {showRegister ? "Create your account" : "Sign in to continue"}
+                </p>
               </div>
             </div>
             <div
@@ -106,7 +132,7 @@ export default function Login({ onLogIn }) {
                 }}
                 className="rounded-circle d-flex align-items-center justify-content-center"
               >
-                <Logo width={34} height={34} />
+                <Logo width={50} height={50} />
               </div>
             </div>
           </div>

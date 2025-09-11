@@ -1,6 +1,7 @@
 // @ts-check
 import { useEffect, useRef, useState } from "react";
 import { getEventSource, getMe, login, logOut } from "./api";
+import axios from "axios";
 import io from "socket.io-client";
 import { parseRoomName } from "./utils";
 
@@ -156,23 +157,79 @@ const useUser = (onUserLoaded = (user) => { }, dispatch) => {
 
   /** Log out form */
   const onLogOut = async () => {
+    console.log('[Logout] Logging out user');
     logOut().then(() => {
+      console.log('[Logout] Server logout successful');
       setUser(null);
+      // Clear localStorage on logout
+      localStorage.removeItem('guideops_user');
       /** This will clear the store, to completely re-initialize an app on the next login. */
+      dispatch({ type: "clear" });
+      setLoading(true);
+    }).catch((error) => {
+      console.log('[Logout] Server logout failed, but clearing local session');
+      setUser(null);
+      localStorage.removeItem('guideops_user');
       dispatch({ type: "clear" });
       setLoading(true);
     });
   };
 
-  /** Runs once when the component is mounted to check if there's user stored in cookies */
+  /** Runs once when the component is mounted to check if there's user stored in session/localStorage */
   useEffect(() => {
     if (!loading) {
       return;
     }
+    
+    console.log('[Session] Checking for existing session...');
+    
+    // First try to get session from backend
     getMe().then((user) => {
-      setUser(user);
+      if (user) {
+        console.log('[Session] Backend session valid:', user.username);
+        setUser(user);
+        setLoading(false);
+        onUserLoaded(user);
+      } else {
+        console.log('[Session] No backend session, checking localStorage...');
+        
+        // Fallback: Check localStorage for user data
+        try {
+          const storedUser = localStorage.getItem('guideops_user');
+          if (storedUser) {
+            const userData = JSON.parse(storedUser);
+            console.log('[Session] localStorage user found:', userData.username);
+            
+            // Verify stored user is still valid by trying a simple API call
+            const BASE_URL = process.env.NODE_ENV === 'production' 
+              ? process.env.REACT_APP_API_URL || 'https://redis-guideops-chat-production.up.railway.app'
+              : 'https://redis-guideops-chat-production.up.railway.app';
+            
+            axios.get(`${BASE_URL}/users/online`)
+              .then(() => {
+                console.log('[Session] localStorage user still valid');
+                setUser(userData);
+                setLoading(false);
+                onUserLoaded(userData);
+              })
+              .catch(() => {
+                console.log('[Session] localStorage user expired, clearing...');
+                localStorage.removeItem('guideops_user');
+                setLoading(false);
+              });
+          } else {
+            console.log('[Session] No stored user data');
+            setLoading(false);
+          }
+        } catch (error) {
+          console.log('[Session] Error reading localStorage:', error);
+          localStorage.removeItem('guideops_user');
+          setLoading(false);
+        }
+      }
+    }).catch(error => {
+      console.log('[Session] Error checking session:', error);
       setLoading(false);
-      onUserLoaded(user);
     });
   }, [onUserLoaded, loading]);
 

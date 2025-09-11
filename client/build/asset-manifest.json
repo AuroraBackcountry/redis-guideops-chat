@@ -1,14 +1,15 @@
 {
   "files": {
-    "main.css": "/static/css/main.50dc574c.css",
-    "main.js": "/static/js/main.7b3e8fbe.js",
+    "main.css": "/static/css/main.8d5fc520.css",
+    "main.js": "/static/js/main.b50482ee.js",
     "static/media/guideops-logo.png": "/static/media/guideops-logo.d67c06d276dca8bebf4c.png",
+    "static/media/welcome-screen.svg": "/static/media/welcome-screen.45ecebc7b4a8914365ff5e0b2afac17c.svg",
     "index.html": "/index.html",
-    "main.50dc574c.css.map": "/static/css/main.50dc574c.css.map",
-    "main.7b3e8fbe.js.map": "/static/js/main.7b3e8fbe.js.map"
+    "main.8d5fc520.css.map": "/static/css/main.8d5fc520.css.map",
+    "main.b50482ee.js.map": "/static/js/main.b50482ee.js.map"
   },
   "entrypoints": [
-    "static/css/main.50dc574c.css",
-    "static/js/main.7b3e8fbe.js"
+    "static/css/main.8d5fc520.css",
+    "static/js/main.b50482ee.js"
   ]
 }

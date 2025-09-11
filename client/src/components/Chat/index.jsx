@@ -30,36 +30,110 @@ export default function Chat({ onLogOut, user, onMessageSend, sidebarOpen, setSi
     users,
   } = useChatHandlers(user);
 
-  // Touch gesture handling for swipe to reveal sidebar
+  // Enhanced touch gesture handling for mobile devices
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [swipeDebug, setSwipeDebug] = useState('');
 
-  const minSwipeDistance = 50; // Minimum distance for swipe
+  const minSwipeDistance = 60; // Optimized for mobile testing
+  const maxVerticalDistance = 100; // Prevent accidental vertical swipes
 
   const onTouchStart = (e) => {
+    console.log('[Swipe] Touch start detected');
+    setSwipeDebug('👆 Touch start');
     setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+    setIsScrolling(false);
+    const touch = e.targetTouches[0];
+    setTouchStart({
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    });
+    
+    // Clear debug message after 1 second
+    setTimeout(() => setSwipeDebug(''), 1000);
   };
 
   const onTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientX);
+    if (!touchStart) return;
+    
+    const touch = e.targetTouches[0];
+    const currentX = touch.clientX;
+    const currentY = touch.clientY;
+    
+    // Calculate distances
+    const xDiff = Math.abs(currentX - touchStart.x);
+    const yDiff = Math.abs(currentY - touchStart.y);
+    
+    // If vertical movement is greater, it's scrolling
+    if (yDiff > xDiff && yDiff > 20) {
+      setIsScrolling(true);
+      return;
+    }
+    
+    // If horizontal movement is significant, prevent default scrolling
+    if (xDiff > 20 && xDiff > yDiff) {
+      e.preventDefault();
+      setTouchEnd({
+        x: currentX,
+        y: currentY,
+        time: Date.now()
+      });
+    }
   };
 
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
+  const onTouchEnd = (e) => {
+    if (!touchStart || !touchEnd || isScrolling) {
+      console.log('[Swipe] Touch end - no valid swipe detected');
+      return;
+    }
     
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
+    const xDistance = touchStart.x - touchEnd.x;
+    const yDistance = Math.abs(touchStart.y - touchEnd.y);
+    const timeDiff = touchEnd.time - touchStart.time;
+    
+    // Must be primarily horizontal and quick enough
+    if (yDistance > maxVerticalDistance || timeDiff > 500) {
+      console.log('[Swipe] Touch rejected - too vertical or too slow');
+      return;
+    }
+
+    const isLeftSwipe = xDistance > minSwipeDistance;
+    const isRightSwipe = xDistance < -minSwipeDistance;
+
+    console.log(`[Swipe] Distance: ${Math.abs(xDistance)}px, Direction: ${isLeftSwipe ? 'left' : isRightSwipe ? 'right' : 'none'}`);
 
     // Swipe right = open sidebar (show channels)
     if (isRightSwipe && !sidebarOpen) {
+      console.log('[Swipe] Opening sidebar');
+      setSwipeDebug('👉 Swipe right - Opening channels');
       setSidebarOpen(true);
+      setTimeout(() => setSwipeDebug(''), 2000);
     }
     // Swipe left = close sidebar  
-    if (isLeftSwipe && sidebarOpen) {
+    else if (isLeftSwipe && sidebarOpen) {
+      console.log('[Swipe] Closing sidebar');
+      setSwipeDebug('👈 Swipe left - Closing channels');
       setSidebarOpen(false);
+      setTimeout(() => setSwipeDebug(''), 2000);
     }
+    else {
+      setSwipeDebug(`📏 Swipe too short: ${Math.abs(xDistance)}px (need ${minSwipeDistance}px)`);
+      setTimeout(() => setSwipeDebug(''), 2000);
+    }
+    
+    // Reset states
+    setTouchStart(null);
+    setTouchEnd(null);
+    setIsScrolling(false);
+  };
+
+  const onTouchCancel = () => {
+    console.log('[Swipe] Touch cancelled');
+    setTouchStart(null);
+    setTouchEnd(null);
+    setIsScrolling(false);
   };
 
   const handleCreateChannel = async () => {
@@ -94,11 +168,31 @@ export default function Chat({ onLogOut, user, onMessageSend, sidebarOpen, setSi
         backgroundColor: '#fff',
         borderBottom: '1px solid #eee',
         minHeight: '60px',
-        flexShrink: 0  // Fixed size header
+        flexShrink: 0,  // Fixed size header
+        position: 'relative'
       }}>
         <h5 className="mb-0" style={{ fontWeight: '500' }}>
           {room ? room.name : "GuideOps Chat"}
         </h5>
+        
+        {/* Swipe Debug Indicator for Mobile Testing */}
+        {swipeDebug && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            zIndex: 10000,
+            whiteSpace: 'nowrap'
+          }}>
+            {swipeDebug}
+          </div>
+        )}
       </div>
 
       <div className="chat-body-mobile" style={{ 
@@ -172,6 +266,7 @@ export default function Chat({ onLogOut, user, onMessageSend, sidebarOpen, setSi
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchCancel}
         >
           {/* Desktop Chat Header */}
           <div className="d-none d-lg-flex align-items-center justify-content-between" style={{
@@ -192,8 +287,14 @@ export default function Chat({ onLogOut, user, onMessageSend, sidebarOpen, setSi
               minHeight: 0, // Allow flex to shrink below content size
               WebkitOverflowScrolling: 'touch', // Smooth iOS scrolling
               // Ensures proper scrolling on all mobile browsers
-              overscrollBehavior: 'contain'
+              overscrollBehavior: 'contain',
+              // Better touch handling
+              touchAction: 'pan-y' // Allow vertical scrolling, detect horizontal swipes
             }}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            onTouchCancel={onTouchCancel}
           >
             <MessageList
               messageListElement={messageListElement}

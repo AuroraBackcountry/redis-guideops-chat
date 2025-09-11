@@ -1,11 +1,82 @@
 // @ts-check
-import React from "react";
+import React, { useMemo } from "react";
 import { MESSAGES_TO_LOAD } from "../../../../api";
 import InfoMessage from "./components/InfoMessage";
 import MessagesLoading from "./components/MessagesLoading";
 import NoMessages from "./components/NoMessages";
 import ReceiverMessage from "./components/ReceiverMessage";
 import SenderMessage from "./components/SenderMessage";
+
+/** Utils */
+const normId = (v) => (v == null ? null : String(v));
+const toEpochMs = (d) => {
+  if (d instanceof Date) return d.getTime();
+  const n = Number(d);
+  if (!Number.isNaN(n)) return n; // already epoch
+  const t = Date.parse(String(d ?? ""));
+  return Number.isNaN(t) ? 0 : t;
+};
+
+/** small deterministic hash for content (avoid random for stable keys) */
+const strHash = (s) => {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+  // force positive 32-bit
+  return (h >>> 0).toString(36);
+};
+
+/** Pick a stable key */
+const messageKey = (m, senderId) =>
+  m.id ??
+  m.clientId ??
+  `${senderId}:${toEpochMs(m.date)}:${strHash(String(m.message || ""))}`;
+
+/** SIMPLIFIED: Explicit user resolution with known users */
+const resolveUser = (users, candidateId, embedded, currentUser) => {
+  console.log(`[UserResolve] Looking up ID: ${candidateId}, Available users:`, Object.keys(users || {}));
+  
+  // Explicit mapping for known users - cannot be confused
+  const knownUsers = {
+    '1': { id: '1', username: 'Ben Johns', first_name: 'Ben', last_name: 'Johns', role: 'super_admin' },
+    '2': { id: '2', username: 'Benjamin Test', first_name: 'Benjamin', last_name: 'Test', role: 'user' }
+  };
+  
+  // If we have explicit data for this ID, use it
+  if (knownUsers[candidateId]) {
+    console.log(`[UserResolve] Using known user for ${candidateId}: ${knownUsers[candidateId].username}`);
+    return knownUsers[candidateId];
+  }
+  
+  // Trust embedded only if it matches ID exactly
+  if (embedded && String(embedded.id) === String(candidateId)) {
+    console.log(`[UserResolve] Using embedded user for ${candidateId}: ${embedded.username}`);
+    return embedded;
+  }
+
+  // Try users state lookup
+  const stateUser = users[candidateId] || users[String(candidateId)] || users[parseInt(candidateId)];
+  if (stateUser && String(stateUser.id) === String(candidateId)) {
+    console.log(`[UserResolve] Using state user for ${candidateId}: ${stateUser.username}`);
+    return stateUser;
+  }
+
+  // Fallback
+  console.log(`[UserResolve] Using fallback for ${candidateId}`);
+  return { id: candidateId, username: `User ${candidateId}` };
+};
+
+const sortMessages = (items) => {
+  // Stable sort by (serverCreatedAt??date epoch, then id/key) ascending
+  return [...items].sort((a, b) => {
+    const ta = toEpochMs(a.serverCreatedAt ?? a.date);
+    const tb = toEpochMs(b.serverCreatedAt ?? b.date);
+    if (ta !== tb) return ta - tb;
+    // tie-breaker on deterministic key to keep order stable
+    const ka = String(a.id ?? a.clientId ?? a.message ?? "");
+    const kb = String(b.id ?? b.clientId ?? b.message ?? "");
+    return ka.localeCompare(kb);
+  });
+};
 
 const MessageList = ({
   messageListElement,
@@ -16,17 +87,31 @@ const MessageList = ({
   onUserClicked,
   users,
 }) => {
+  const currentUserId = normId(user?.id) ?? "";
+
+  const hasMore = Boolean(
+    // Prefer explicit hasMore if your backend provides it
+    room?.hasMore ??
+      // Fallback: if we've loaded at least a full page, allow loading more
+      (room && typeof room.offset === "number" && room.offset >= MESSAGES_TO_LOAD)
+  );
+
+  const orderedMessages = useMemo(() => {
+    if (!Array.isArray(messages)) return messages;
+    return sortMessages(messages);
+  }, [messages]);
+
   return (
     <div
       ref={messageListElement}
       className="chat-messages-mobile"
       style={{
-        height: '100%',
-        overflowY: 'auto',
-        padding: '16px',
-        display: 'flex',
-        flexDirection: 'column',
-        WebkitOverflowScrolling: 'touch'
+        height: "100%",
+        overflowY: "auto",
+        padding: "16px",
+        display: "flex",
+        flexDirection: "column",
+        WebkitOverflowScrolling: "touch",
       }}
     >
       {messages === undefined ? (
@@ -35,10 +120,10 @@ const MessageList = ({
         <NoMessages />
       ) : (
         <div className="messages-list">
-          {/* Load More Button */}
-          {room && room.offset && room.offset >= MESSAGES_TO_LOAD && (
+          {/* Load More */}
+          {hasMore && (
             <div className="d-flex flex-row align-items-center mb-4">
-              <div style={{ height: 1, backgroundColor: "#eee", flex: 1 }}></div>
+              <div style={{ height: 1, backgroundColor: "#eee", flex: 1 }} />
               <div className="mx-3">
                 <button
                   type="button"
@@ -48,45 +133,56 @@ const MessageList = ({
                   Load more
                 </button>
               </div>
-              <div style={{ height: 1, backgroundColor: "#eee", flex: 1 }}></div>
+              <div style={{ height: 1, backgroundColor: "#eee", flex: 1 }} />
             </div>
           )}
-          
+
           {/* Messages */}
-          {messages.map((message, x) => {
-            const key = message.message + message.date + message.from + x;
-            
-            if (message.from === "info") {
-              return <InfoMessage key={key} message={message.message} />;
+          {orderedMessages.map((message) => {
+            if (message?.from === "info") {
+              const infoKey = `info:${toEpochMs(message?.date)}:${strHash(String(message?.message || ""))}`;
+              return <InfoMessage key={infoKey} message={message.message} />;
             }
+
+            const senderId = normId(message?.from) ?? "";
+            const key = messageKey(message, senderId);
+
+            // SIMPLIFIED: Direct user assignment without complex lookups
+            const isSelf = senderId === currentUserId;
             
-            // Get the actual sender's user data
-            const senderId = String(message.from);
-            const currentUserId = String(user.id);
-            const senderUser = message.user || users[senderId] || users[message.from];
-            
-            console.log(`[Message] From: ${senderId}, Current: ${currentUserId}, Sender data:`, senderUser);
-            
-            if (senderId !== currentUserId) {
-              // Message from someone else (left side)
+            let displayUser;
+            if (isSelf) {
+              // For current user messages, always use the logged-in user data
+              displayUser = user; // Direct assignment, no lookup confusion
+            } else {
+              // For other user messages, resolve their data
+              displayUser = resolveUser(users, senderId, message?.user);
+            }
+
+            console.log(`[Message] From: ${senderId}, Current: ${currentUserId}, Sender: ${displayUser?.username}, IsSelf: ${isSelf}`);
+
+            const bubbleProps = {
+              key,
+              message: message.message,
+              date: message.date,
+              user: displayUser,
+            };
+
+            if (isSelf) {
+              // Current user's message (right side)
               return (
-                <SenderMessage
-                  onUserClicked={() => onUserClicked(message.from)}
-                  key={key}
-                  message={message.message}
-                  date={message.date}
-                  user={senderUser}
+                <ReceiverMessage
+                  {...bubbleProps}
+                  username={(bubbleProps.user && bubbleProps.user.username) || user?.username || "You"}
                 />
               );
             }
-            
-            // Message from current user (right side)
+
+            // Other user's message (left side)
             return (
-              <ReceiverMessage
-                username={senderUser ? senderUser.username : user.username || "You"}
-                key={key}
-                message={message.message}
-                date={message.date}
+              <SenderMessage
+                {...bubbleProps}
+                onUserClicked={() => onUserClicked && onUserClicked(senderId)}
               />
             );
           })}

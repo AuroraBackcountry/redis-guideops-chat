@@ -84,24 +84,41 @@ const useChatHandlers = (/** @type {import("../../state").UserEntry} */ user) =>
   }, [scrollToBottom, roomId]);
 
   const onUserClicked = async (userId) => {
-    /** Check if room exists. */
-    const targetUser = state.users[userId];
-    let roomId = targetUser.room;
-    if (roomId === undefined) {
-      // @ts-ignore
-      const room = await addRoom(userId, user.id);
-      roomId = room.id;
-      /** We need to set this room id to user. */
-      dispatch({ type: "set user", payload: { ...targetUser, room: roomId } });
-      /** Then a new room should be added to the store. */
-      dispatch({
-        type: "add room",
+    try {
+      console.log(`[UserClick] Attempting to open DM with user ${userId}`);
+      
+      /** Check if user exists in state */
+      const targetUser = state.users[userId];
+      if (!targetUser) {
+        console.log(`[UserClick] User ${userId} not found in state`);
+        alert(`User ${userId} information not available`);
+        return;
+      }
+
+      /** Check if room exists. */
+      let roomId = targetUser.room;
+      if (roomId === undefined) {
+        console.log(`[UserClick] Creating new DM room with user ${userId}`);
         // @ts-ignore
-        payload: { id: roomId, name: parseRoomName(room.names, user.username) },
-      });
+        const room = await addRoom(userId, user.id);
+        roomId = room.id;
+        /** We need to set this room id to user. */
+        dispatch({ type: "set user", payload: { ...targetUser, room: roomId } });
+        /** Then a new room should be added to the store. */
+        dispatch({
+          type: "add room",
+          // @ts-ignore
+          payload: { id: roomId, name: parseRoomName(room.names, user.username) },
+        });
+      }
+      
+      console.log(`[UserClick] Switching to room ${roomId}`);
+      /** Then a room should be changed */
+      dispatch({ type: "set current room", payload: roomId });
+    } catch (error) {
+      console.error('[UserClick] Error opening DM:', error);
+      alert('Unable to open direct message with this user');
     }
-    /** Then a room should be changed */
-    dispatch({ type: "set current room", payload: roomId });
   };
 
   const onLoadMoreMessages = useCallback(() => {

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { getButtonLinks } from "../api";
 
-const Navbar = ({ sidebarOpen, setSidebarOpen, currentRoom, user, onLogOut, menuOpen, setMenuOpen }) => {
+const Navbar = ({ currentPage, user, onLogOut, menuOpen, setMenuOpen }) => {
   /**
    * @type {[{
    *  heroku?: string;
@@ -17,6 +17,15 @@ const Navbar = ({ sidebarOpen, setSidebarOpen, currentRoom, user, onLogOut, menu
     getButtonLinks().then(setLinks);
   }, []);
   
+  // Get page title based on current route
+  const getPageTitle = () => {
+    if (currentPage.startsWith('/chat')) return 'GuideOps Chat';
+    if (currentPage === '/channels') return 'Channels';
+    if (currentPage === '/settings') return 'Settings';
+    if (currentPage === '/profile') return 'Profile';
+    return 'GuideOps Chat';
+  };
+  
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-white" style={{
       minHeight: '60px',
@@ -29,7 +38,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen, currentRoom, user, onLogOut, menu
         margin: 0,
         color: '#007bff'
       }}>
-        GuideOps Chat
+        {getPageTitle()}
       </span>
       
       {/* Mobile: Hamburger menu button (only when logged in) */}
