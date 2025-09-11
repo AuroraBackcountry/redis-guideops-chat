@@ -16,6 +16,10 @@ const ReceiverMessage = ({
         style={{ borderRadius: 12 }}
       >
         <div className="ctext-wrap">
+          {/* Show sender name for your own messages */}
+          <div className="conversation-name text-right text-primary mb-1" style={{ fontWeight: 600 }}>
+            {username || "You"}
+          </div>
           <p className="text-left">{message}</p>
           <p className="chat-time mb-0">
             <ClockIcon /> {moment.unix(date).format("LT")}{" "}

@@ -12,7 +12,7 @@ import OnlineIndicator from "../../../OnlineIndicator";
  * @param {{ active: boolean; room: import('../../../../../../state').Room; onClick: () => void; }} props
  */
 const ChatListItem = ({ room, active = false, onClick }) => {
-  const { online, name, lastMessage, userId } = useChatListItemHandlers(room);
+  const { online, name, lastMessage, userId, messagePreview } = useChatListItemHandlers(room);
   return (
     <div
       onClick={onClick}
@@ -28,8 +28,10 @@ const ChatListItem = ({ room, active = false, onClick }) => {
       </div>
       <div className="media-body overflow-hidden">
         <h5 className="text-truncate font-size-14 mb-1">{name}</h5>
-        {lastMessage && (
-          <p className="text-truncate mb-0"> {lastMessage.message} </p>
+        {messagePreview && (
+          <p className="text-truncate mb-0" style={{ fontSize: '13px', color: '#6c757d' }}>
+            {messagePreview}
+          </p>
         )}
       </div>
       {lastMessage && (
@@ -46,6 +48,9 @@ const useChatListItemHandlers = (
 ) => {
   const { id, name } = room;
   const [state] = useAppState();
+  
+  // Get current user info for "You:" vs "SenderName:" logic
+  const currentUser = state.user || JSON.parse(localStorage.getItem('guideops_user') || '{}');
 
   /** Here we want to associate the room with a user by its name (since it's unique). */
   const [isUser, online, userId] = useMemo(() => {
@@ -67,6 +72,56 @@ const useChatListItemHandlers = (
   }, [id, name, state.users]);
 
   const lastMessage = useLastMessage(room);
+  
+  // Create message preview with sender identification
+  const messagePreview = useMemo(() => {
+    if (!lastMessage) return null;
+    
+    // Handle info messages (system messages)
+    if (lastMessage.from === 'info') {
+      return lastMessage.message;
+    }
+    
+    // Get sender information
+    const senderId = lastMessage.from;
+    let senderUser = lastMessage.user || state.users[senderId];
+    
+    // Additional fallback: try to find user by ID in state
+    if (!senderUser && senderId) {
+      const userEntries = Object.entries(state.users);
+      const foundUser = userEntries.find(([userId, userData]) => 
+        userId === senderId || userId === String(senderId)
+      );
+      if (foundUser) {
+        senderUser = foundUser[1];
+      }
+    }
+    
+    if (!senderUser) {
+      return lastMessage.message; // Fallback if no user data found
+    }
+    
+    // Create "SenderName: Message" format like WhatsApp  
+    const messageText = lastMessage.message;
+    
+    // Check if current user sent the message
+    const isCurrentUser = currentUser && (senderId === currentUser.id || senderId === String(currentUser.id));
+    
+    if (isCurrentUser) {
+      return `You: ${messageText}`;
+    }
+    
+    // For other users, show their name
+    const senderName = senderUser.username || senderUser.first_name || 'Unknown';
+    
+    // For direct messages, don't show sender name if it's the other person's name
+    // (since the room name is already their name) 
+    if (room.id.includes(':') && senderName === room.name) {
+      return messageText;
+    }
+    
+    return `${senderName}: ${messageText}`;
+  }, [lastMessage, state.users, room.name, room.id, currentUser]);
 
   return {
     isUser,
@@ -74,6 +129,7 @@ const useChatListItemHandlers = (
     userId,
     name: room.name,
     lastMessage,
+    messagePreview,
   };
 };
 

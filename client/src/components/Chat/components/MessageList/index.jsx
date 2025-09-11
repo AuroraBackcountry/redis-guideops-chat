@@ -60,9 +60,15 @@ const MessageList = ({
               return <InfoMessage key={key} message={message.message} />;
             }
             
-            if (+message.from !== +user.id) {
-              // Use embedded user data from message (always available)
-              const senderUser = message.user || users[message.from];
+            // Get the actual sender's user data
+            const senderId = String(message.from);
+            const currentUserId = String(user.id);
+            const senderUser = message.user || users[senderId] || users[message.from];
+            
+            console.log(`[Message] From: ${senderId}, Current: ${currentUserId}, Sender data:`, senderUser);
+            
+            if (senderId !== currentUserId) {
+              // Message from someone else (left side)
               return (
                 <SenderMessage
                   onUserClicked={() => onUserClicked(message.from)}
@@ -74,9 +80,10 @@ const MessageList = ({
               );
             }
             
+            // Message from current user (right side)
             return (
               <ReceiverMessage
-                username={users[message.from] ? users[message.from].username : ""}
+                username={senderUser ? senderUser.username : user.username || "You"}
                 key={key}
                 message={message.message}
                 date={message.date}

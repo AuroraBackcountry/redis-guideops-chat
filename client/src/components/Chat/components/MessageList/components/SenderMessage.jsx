@@ -17,21 +17,20 @@ const SenderMessage = ({
         style={{ borderRadius: 12, backgroundColor: "rgba(85, 110, 230, 0.1)" }}
       >
         <div className="ctext-wrap">
-          {user && (
-            <div className="conversation-name text-primary d-flex align-items-center mb-1">
-              <div
-                className="mr-2"
-                style={{
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-                onClick={onUserClicked}
-              >
-                {user.username}
-              </div>
-              <OnlineIndicator width={7} height={7} online={user.online} />
+          {/* Always show sender name - essential for group chats */}
+          <div className="conversation-name text-primary d-flex align-items-center mb-1">
+            <div
+              className="mr-2"
+              style={{
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+              onClick={onUserClicked}
+            >
+              {user ? user.username : "Unknown User"}
             </div>
-          )}
+            {user && <OnlineIndicator width={7} height={7} online={user.online} />}
+          </div>
           <p className="text-left">{message}</p>
           <p className="chat-time mb-0">
             <ClockIcon /> {moment.unix(date).format("LT")}{" "}
