@@ -22,10 +22,8 @@ def get_room_messages_v2(room_id):
     print(f"[API v2] User in session: {'user' in session}")
     
     if "user" not in session:
-        # For testing: try to get user 1 as fallback
-        print("[API v2] No session, using fallback user for testing")
-        # Temporarily allow testing without full session
-        pass
+        print("[API v2] No session found")
+        return jsonify({"error": "Not authenticated"}), 401
     
     count = int(request.args.get("count", 15))
     before_id = request.args.get("before")  # Stream ID for pagination
@@ -48,11 +46,10 @@ def send_message_v2(room_id):
     print(f"[API v2 POST] User in session: {'user' in session}")
     
     if "user" not in session:
-        # For testing: use fallback user 1
-        print("[API v2 POST] No session, using fallback user 1 for testing")
-        user_id = "1"  # Temporary fallback for testing
-    else:
-        user_id = session["user"]["id"]
+        print("[API v2 POST] No session found")
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    user_id = session["user"]["id"]
     
     data = request.get_json()
     message_text = data.get("message", "").strip()
