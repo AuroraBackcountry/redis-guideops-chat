@@ -151,14 +151,21 @@ def me():
 @app.route("/system/status")
 def system_status():
     """Check if system needs initialization (first user)"""
-    total_users_count = redis_client.get("total_users")
-    needs_initialization = not total_users_count or int(total_users_count.decode('utf-8')) == 0
-    
-    return jsonify({
-        "needs_initialization": needs_initialization,
-        "total_users": int(total_users_count.decode('utf-8')) if total_users_count else 0,
-        "message": "System ready for account owner setup" if needs_initialization else "System initialized"
-    })
+    try:
+        total_users_count = redis_client.get("total_users")
+        needs_initialization = not total_users_count or int(total_users_count.decode('utf-8')) == 0
+        
+        return jsonify({
+            "needs_initialization": needs_initialization,
+            "total_users": int(total_users_count.decode('utf-8')) if total_users_count else 0,
+            "message": "System ready for account owner setup" if needs_initialization else "System initialized",
+            "redis_connected": True
+        })
+    except Exception as e:
+        return jsonify({
+            "error": f"Redis connection failed: {str(e)}",
+            "redis_connected": False
+        }), 500
 
 @app.route("/debug/session")
 def debug_session():
