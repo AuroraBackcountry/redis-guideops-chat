@@ -1,5 +1,5 @@
 // @ts-check
-import React from "react";
+import React, { useState } from "react";
 import ChatList from "./components/ChatList";
 import MessageList from "./components/MessageList";
 import TypingArea from "./components/TypingArea";
@@ -14,6 +14,8 @@ import { createChannel } from "../../api";
  * }} props
  */
 export default function Chat({ onLogOut, user, onMessageSend }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
   const {
     onLoadMoreMessages,
     onUserClicked,
@@ -46,24 +48,81 @@ export default function Chat({ onLogOut, user, onMessageSend }) {
   };
 
   return (
-    <div className="container py-5 px-4">
-      <div className="chat-body row overflow-hidden shadow bg-light rounded">
-        <div className="col-4 px-0">
-          <ChatList
-            user={user}
-            onLogOut={onLogOut}
-            rooms={rooms}
-            currentRoom={currentRoom}
-            dispatch={dispatch}
-          />
+    <div className="mobile-chat-container" style={{ 
+      height: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column',
+      backgroundColor: '#f8f9fa'
+    }}>
+      
+      {/* Mobile Header with Hamburger */}
+      <div className="mobile-header d-flex d-lg-none align-items-center justify-content-between" style={{
+        padding: '12px 16px',
+        backgroundColor: '#fff',
+        borderBottom: '1px solid #eee',
+        minHeight: '60px'
+      }}>
+        <button 
+          className="btn btn-light"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          style={{ border: 'none', padding: '8px' }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 12h18M3 6h18M3 18h18"/>
+          </svg>
+        </button>
+        <h5 className="mb-0">{room ? room.name : "GuideOps Chat"}</h5>
+        <div style={{ width: '36px' }}></div> {/* Spacer for centering */}
+      </div>
+
+      <div className="chat-body-mobile" style={{ 
+        flex: 1, 
+        display: 'flex', 
+        overflow: 'hidden',
+        position: 'relative'
+      }}>
+        
+        {/* Sidebar - Mobile First */}
+        <div 
+          className={`sidebar-mobile ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}
+          style={{
+            position: window.innerWidth < 992 ? 'absolute' : 'relative',
+            left: sidebarOpen || window.innerWidth >= 992 ? '0' : '-100%',
+            width: window.innerWidth < 992 ? '100%' : '320px',
+            height: '100%',
+            backgroundColor: '#f8f9fa',
+            borderRight: window.innerWidth >= 992 ? '1px solid #eee' : 'none',
+            zIndex: window.innerWidth < 992 ? 1000 : 1,
+            transition: 'left 0.3s ease-in-out',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          {/* Desktop Header */}
+          <div className="d-none d-lg-block" style={{
+            padding: '20px 16px',
+            borderBottom: '1px solid #eee',
+            backgroundColor: '#fff'
+          }}>
+            <h4 className="mb-0">GuideOps Chat</h4>
+          </div>
+          
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <ChatList
+              user={user}
+              onLogOut={onLogOut}
+              rooms={rooms}
+              currentRoom={currentRoom}
+              dispatch={dispatch}
+            />
+          </div>
           
           {/* Enhanced Features Panel */}
           <div className="enhanced-features" style={{ 
-            padding: '15px', 
+            padding: '16px', 
             borderTop: '1px solid #eee',
-            backgroundColor: '#f8f9fa'
+            backgroundColor: '#fff'
           }}>
-            <h6 style={{ marginBottom: '10px', color: '#495057' }}>Enhanced Features</h6>
             <button 
               className="btn btn-primary btn-sm mb-2" 
               style={{ width: '100%' }}
@@ -71,44 +130,75 @@ export default function Chat({ onLogOut, user, onMessageSend }) {
             >
               + Create Channel
             </button>
-            <small className="text-muted">
-              Redis-powered features:<br/>
-              ✅ Enhanced user profiles<br/>
-              ✅ Channel management<br/>
-              ✅ AI assistant ready<br/>
-              🔄 Real-time updates (coming)
-            </small>
           </div>
         </div>
-        {/* Chat Box*/}
-        <div className="col-8 px-0 flex-column bg-white rounded-lg">
-          <div className="px-4 py-4" style={{ borderBottom: "1px solid #eee" }}>
-            <h2 className="font-size-15 mb-0">{room ? room.name : "Room"}</h2>
+
+        {/* Chat Area */}
+        <div 
+          className="chat-area-mobile"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: '#fff'
+          }}
+        >
+          {/* Desktop Chat Header */}
+          <div className="d-none d-lg-flex align-items-center justify-content-between" style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid #eee',
+            minHeight: '60px'
+          }}>
+            <h5 className="mb-0">{room ? room.name : "Select a Channel"}</h5>
           </div>
-          <MessageList
-            messageListElement={messageListElement}
-            messages={messages}
-            room={room}
-            onLoadMoreMessages={onLoadMoreMessages}
-            user={user}
-            onUserClicked={onUserClicked}
-            users={users}
-          />
 
-          {/* Typing area */}
-          <TypingArea
-            message={message}
-            setMessage={setMessage}
-            onSubmit={(e) => {
-              e.preventDefault();
-              onMessageSend(message.trim(), roomId);
-              setMessage("");
+          {/* Message List */}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <MessageList
+              messageListElement={messageListElement}
+              messages={messages}
+              room={room}
+              onLoadMoreMessages={onLoadMoreMessages}
+              user={user}
+              onUserClicked={onUserClicked}
+              users={users}
+            />
+          </div>
 
-              messageListElement.current.scrollTop =
-                messageListElement.current.scrollHeight;
+          {/* Typing Area */}
+          <div style={{ borderTop: '1px solid #eee' }}>
+            <TypingArea
+              message={message}
+              setMessage={setMessage}
+              onSubmit={(e) => {
+                e.preventDefault();
+                onMessageSend(message.trim(), roomId);
+                setMessage("");
+                setSidebarOpen(false); // Close sidebar on mobile after sending
+
+                messageListElement.current.scrollTop =
+                  messageListElement.current.scrollHeight;
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Mobile Overlay */}
+        {sidebarOpen && (
+          <div 
+            className="mobile-overlay d-lg-none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.3)',
+              zIndex: 999
             }}
+            onClick={() => setSidebarOpen(false)}
           />
-        </div>
+        )}
       </div>
     </div>
   );
