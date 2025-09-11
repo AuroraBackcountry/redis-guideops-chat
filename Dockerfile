@@ -9,5 +9,8 @@ RUN pip install -r requirements.txt
 COPY . /app
 WORKDIR /app
 
+# Copy React build files for frontend
+COPY client/build ./client/build
+
 # Production Flask app execution
 CMD ["python", "app.py"]
