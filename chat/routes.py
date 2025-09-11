@@ -464,10 +464,15 @@ def get_messages(room_id):
     return jsonify(messages)
 
 @app.route("/")
-def serve_frontend():
-    """Serve the beautiful React frontend - FORCE NEW DEPLOYMENT"""
-    # Added comment to force Railway to see code change
-    return app.send_static_file('index.html')
+def api_status():
+    """API-only backend status - Frontend served by Vercel"""
+    return jsonify({
+        "status": "API Ready",
+        "message": "GuideOps Chat Backend API",
+        "frontend_url": "https://guideops-chat-frontend.vercel.app",
+        "version": "2.0",
+        "architecture": "Split Deployment (Railway + Vercel)"
+    })
 
 @app.route("/register-page")
 def beautiful_registration():
