@@ -16,15 +16,20 @@ const Navbar = () => {
     getButtonLinks().then(setLinks);
   }, []);
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-white">
-      <span className="navbar-brand">Redis chat demo</span>
-      {links !== null ? (
-        <span className="navbar-text">
-          {links.github && <GithubIcon link={links.github} />}
-        </span>
-      ) : (
-        <></>
-      )}
+    <nav className="navbar navbar-expand-lg navbar-light bg-white" style={{
+      minHeight: '60px',
+      padding: '8px 16px',
+      borderBottom: '1px solid #e9ecef'
+    }}>
+      <span className="navbar-brand" style={{
+        fontSize: '18px',
+        fontWeight: '600',
+        margin: 0,
+        color: '#007bff'
+      }}>
+        GuideOps Chat
+      </span>
+      {/* Removed GitHub link for cleaner mobile experience */}
     </nav>
   );
 };
