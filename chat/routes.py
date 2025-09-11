@@ -861,12 +861,16 @@ def get_room_messages(room_id):
             import json
             message = json.loads(message_data.decode('utf-8'))
             
-            # Convert to frontend expected format
+            # Convert to frontend expected format WITH user data
+            user_id = str(message.get('from', ''))
+            user_data = get_user_data(user_id) if user_id else None
+            
             formatted_message = {
                 "message": message.get('message', ''),
                 "date": int(timestamp),
-                "from": str(message.get('from', '')),
-                "roomId": str(message.get('roomId', room_id))
+                "from": user_id,
+                "roomId": str(message.get('roomId', room_id)),
+                "user": user_data  # Include complete user data with message
             }
             result.append(formatted_message)
         except (json.JSONDecodeError, UnicodeDecodeError) as e:
