@@ -656,12 +656,12 @@ def stream():
 
 @app.route("/admin")
 def admin_panel():
-    """Simple admin panel for Redis chat"""
+    """Simple admin panel for GuideOps chat"""
     return """
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Redis Chat Admin Panel</title>
+        <title>GuideOps Chat Admin Panel</title>
         <style>
             body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
             .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -687,7 +687,7 @@ def admin_panel():
         <div class="container">
             <div class="header">
                 <h1>GuideOps Chat Admin Panel</h1>
-                <p>Real-time chat system powered by Redis + Flask + Socket.IO</p>
+                <p>Real-time chat system for guide teams</p>
             </div>
             
             <div class="stats">
@@ -733,7 +733,7 @@ def admin_panel():
             
             <div class="section">
                 <h3>🔧 System Actions</h3>
-                <button class="btn btn-success" onclick="testRedisConnection()">Test Redis Connection</button>
+                <button class="btn btn-success" onclick="testRedisConnection()">Test Database Connection</button>
                 <button class="btn" onclick="clearAllData()">Clear All Data</button>
                 <button class="btn" onclick="createTestData()">Create Test Data</button>
             </div>
@@ -742,7 +742,7 @@ def admin_panel():
                 <h3>📊 System Status</h3>
                 <div id="system-status">
                     <p>✅ Flask Server: Running on port 3000</p>
-                    <p>✅ Redis Server: Connected</p>
+                    <p>✅ Database Server: Connected</p>
                     <p>✅ Socket.IO: Active</p>
                     <p>✅ Frontend: Available at <a href="/">http://localhost:3000</a></p>
                 </div>
@@ -815,11 +815,11 @@ def admin_panel():
             }
             
             function testRedisConnection() {
-                alert('Redis connection test - check server logs for details');
+                alert('Database connection test - check server logs for details');
             }
             
             function clearAllData() {
-                if (confirm('Are you sure you want to clear all Redis data?')) {
+                if (confirm('Are you sure you want to clear all chat data?')) {
                     alert('Data clear - this would need to be implemented');
                 }
             }
