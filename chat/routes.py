@@ -167,40 +167,7 @@ def system_status():
             "redis_connected": False
         }), 500
 
-@app.route("/debug/session")
-def debug_session():
-    """Debug endpoint to check current session user data"""
-    user = session.get("user")
-    if not user:
-        return jsonify({"error": "No session user"}), 401
-    
-    # Get fresh Redis data using simple function
-    user_id = user.get("id")
-    fresh_user = get_user_data(user_id)
-    
-    return jsonify({
-        "current_session_user": user,
-        "fresh_redis_user": fresh_user,
-        "data_consistent": user.get("username") == fresh_user.get("username") if fresh_user else False
-    })
-
-@app.route("/debug/all-users")
-def debug_all_users():
-    """Debug endpoint - Simple Redis user data"""
-    total_users = redis_client.get("total_users")
-    if not total_users:
-        return jsonify({"error": "No users found"})
-    
-    all_users = []
-    for i in range(1, int(total_users.decode('utf-8')) + 1):
-        user = get_user_data(i)
-        if user:
-            all_users.append(user)
-    
-    return jsonify({
-        "total_users": int(total_users.decode('utf-8')),
-        "users": all_users
-    })
+# Debug endpoints removed - production system clean
 
 @app.route("/admin/stats")
 def admin_stats():
@@ -501,17 +468,165 @@ def serve_frontend():
     """Serve the beautiful React frontend"""
     return app.send_static_file('index.html')
 
-@app.route("/test")
-def test_registration():
-    """Serve registration test page"""
-    with open("test_registration.html", "r") as f:
-        return f.read()
-
 @app.route("/register-page")
 def beautiful_registration():
     """Serve beautiful registration page that matches login design"""
-    with open("beautiful_register.html", "r") as f:
-        return f.read()
+    return '''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <link rel="icon" href="/favicon.ico"/>
+        <meta name="viewport" content="width=device-width,initial-scale=1"/>
+        <meta name="theme-color" content="#000000"/>
+        <title>GuideOps Chat - Create Account</title>
+        <link href="/static/css/2.150d169a.chunk.css" rel="stylesheet">
+        <link href="/static/css/main.c68ddd7d.chunk.css" rel="stylesheet">
+    </head>
+    <body>
+        <div id="root">
+            <div class="full-height bg-light">
+                <nav class="navbar navbar-expand-lg navbar-light bg-white">
+                    <span class="navbar-brand">GuideOps Chat</span>
+                </nav>
+                
+                <div class="login-form text-center login-page">
+                    <div class="rounded" style="box-shadow: 0 0.75rem 1.5rem rgba(18,38,63,.03);">
+                        <div class="position-relative">
+                            <div class="row no-gutters align-items-center" style="
+                                max-width: 400px;
+                                background-color: rgba(85, 110, 230, 0.25);
+                                padding-left: 20px;
+                                padding-right: 20px;
+                                border-top-left-radius: 4px;
+                                border-top-right-radius: 4px;
+                            ">
+                                <div class="col text-primary text-left">
+                                    <h3 class="font-size-15">Join GuideOps!</h3>
+                                    <p>Create your account</p>
+                                </div>
+                                <div class="col align-self-end">
+                                    <img alt="welcome" style="max-width: 100%;" src="/welcome-back.png">
+                                </div>
+                            </div>
+                        </div>
+
+                        <form class="bg-white text-left px-4" style="
+                            padding-top: 58px;
+                            border-bottom-left-radius: 4px;
+                            border-bottom-right-radius: 4px;
+                        " id="registerForm">
+                            
+                            <div id="message" style="margin-bottom: 15px;"></div>
+                            
+                            <label class="font-size-12">Full Name</label>
+                            <input type="text" id="name" class="form-control mb-3" placeholder="Enter your full name" required autocomplete="name" />
+
+                            <label class="font-size-12">Email</label>
+                            <input type="email" id="email" class="form-control mb-3" placeholder="Enter your email" required autocomplete="email" />
+
+                            <label class="font-size-12">Phone (Optional)</label>
+                            <input type="tel" id="phone" class="form-control mb-3" placeholder="+1 (555) 123-4567" autocomplete="tel" />
+
+                            <label class="font-size-12">Password</label>
+                            <input type="password" id="password" class="form-control mb-3" placeholder="Create password (min 6 chars)" required minlength="6" autocomplete="new-password" />
+
+                            <label class="font-size-12">Confirm Password</label>
+                            <input type="password" id="confirmPassword" class="form-control" placeholder="Confirm your password" required minlength="6" autocomplete="new-password" />
+
+                            <div style="height: 30px;"></div>
+                            
+                            <button class="btn btn-lg btn-primary btn-block" type="submit">Create Account</button>
+                            
+                            <div class="text-center mt-3" style="padding-bottom: 20px;">
+                                <a href="/" style="color: #007bff; text-decoration: none; font-size: 14px; font-weight: 500;">Already have an account? Sign In</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.getElementById('registerForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const name = document.getElementById('name').value;
+                const email = document.getElementById('email').value;
+                const phone = document.getElementById('phone').value;
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                
+                document.getElementById('message').innerHTML = '';
+                
+                if (password !== confirmPassword) {
+                    showMessage('Passwords do not match', false);
+                    return;
+                }
+                
+                if (password.length < 6) {
+                    showMessage('Password must be at least 6 characters', false);
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, email, phone, password })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        if (result.is_account_owner) {
+                            showMessage('🎉 ' + result.message, true);
+                            setTimeout(() => loginAndRedirect(email, password), 2000);
+                        } else {
+                            showMessage(result.message, true);
+                            setTimeout(() => loginAndRedirect(email, password), 1000);
+                        }
+                    } else {
+                        showMessage(result.error || 'Registration failed', false);
+                    }
+                } catch (error) {
+                    showMessage('Registration failed: ' + error.message, false);
+                }
+            });
+
+            async function loginAndRedirect(email, password) {
+                try {
+                    const response = await fetch('/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: email, password })
+                    });
+                    
+                    if (response.ok) {
+                        window.location.href = '/';
+                    } else {
+                        showMessage('Auto-login failed. Please login manually.', false);
+                        setTimeout(() => window.location.href = '/', 2000);
+                    }
+                } catch (error) {
+                    showMessage('Auto-login failed. Please login manually.', false);
+                    setTimeout(() => window.location.href = '/', 2000);
+                }
+            }
+
+            function showMessage(text, isSuccess = false) {
+                const messageDiv = document.getElementById('message');
+                const alertClass = isSuccess ? 'alert-success' : 'alert-danger';
+                messageDiv.innerHTML = '<div class="alert ' + alertClass + '" style="margin-bottom: 15px; padding: 10px 15px; border-radius: 4px; font-size: 14px;">' + text + '</div>';
+                
+                if (!isSuccess) {
+                    setTimeout(() => messageDiv.innerHTML = '', 5000);
+                }
+            }
+        </script>
+    </body>
+    </html>
+    '''
 
 @app.route("/stream")
 def stream():
