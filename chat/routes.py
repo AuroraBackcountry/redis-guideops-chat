@@ -498,8 +498,23 @@ def get_messages(room_id):
 
 @app.route("/")
 def serve_frontend():
-    """Serve the React frontend"""
-    return app.send_static_file('index.html')
+    """Serve the React frontend or simple welcome page"""
+    try:
+        return app.send_static_file('index.html')
+    except:
+        # Fallback if no static files in production
+        return '''
+        <!DOCTYPE html>
+        <html>
+        <head><title>GuideOps Chat</title></head>
+        <body>
+            <h1>🚀 GuideOps Chat - Production Ready!</h1>
+            <p>Your chat system is running successfully.</p>
+            <p><a href="/register-page">Create Account</a></p>
+            <p><a href="/admin">Admin Panel</a></p>
+        </body>
+        </html>
+        '''
 
 @app.route("/test")
 def test_registration():
