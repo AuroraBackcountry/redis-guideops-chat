@@ -17,12 +17,7 @@ def get_room_messages_v2(room_id):
     - count: Number of messages (default 15)  
     - before: Stream ID for pagination (optional)
     """
-    # Debug session info
-    print(f"[API v2] Session data: {dict(session)}")
-    print(f"[API v2] User in session: {'user' in session}")
-    
     if "user" not in session:
-        print("[API v2] No session found")
         return jsonify({"error": "Not authenticated"}), 401
     
     count = int(request.args.get("count", 15))
@@ -42,11 +37,7 @@ def get_room_messages_v2(room_id):
 @app.route("/v2/rooms/<room_id>/messages", methods=["POST"])
 def send_message_v2(room_id):
     """Send message using Redis Streams - perfect attribution"""
-    print(f"[API v2 POST] Session data: {dict(session)}")
-    print(f"[API v2 POST] User in session: {'user' in session}")
-    
     if "user" not in session:
-        print("[API v2 POST] No session found")
         return jsonify({"error": "Not authenticated"}), 401
     
     user_id = session["user"]["id"]
@@ -149,6 +140,28 @@ def migrate_to_redis_streams():
         print(f"[API] Migration error: {e}")
         return jsonify({"error": "Migration failed"}), 500
 
+
+@app.route("/v2/debug/session")
+def debug_session():
+    """Debug endpoint to check session configuration (production-safe)"""
+    try:
+        from flask import current_app
+        
+        return jsonify({
+            "has_user": "user" in session,
+            "user_id": session.get("user", {}).get("id", "NO_USER_ID"),
+            "username": session.get("user", {}).get("username", "NO_USERNAME"),
+            "secret_key_set": bool(current_app.config.get('SECRET_KEY')),
+            "secret_key_default": current_app.config.get('SECRET_KEY') == "Optional default value",
+            "session_type": current_app.config.get('SESSION_TYPE'),
+            "session_permanent": session.permanent,
+            "session_security_configured": bool(current_app.config.get('SESSION_COOKIE_SECURE'))
+        })
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "has_session": bool(session)
+        }), 500
 
 @app.route("/v2/system/status")
 def redis_streams_status():

@@ -31,36 +31,24 @@ const messageKey = (m, senderId) =>
   m.clientId ??
   `${senderId}:${toEpochMs(m.date)}:${strHash(String(m.message || ""))}`;
 
-/** SIMPLIFIED: Explicit user resolution with known users */
+/** REDIS AS SOURCE OF TRUTH: User resolution prioritizing Redis data */
 const resolveUser = (users, candidateId, embedded, currentUser) => {
   console.log(`[UserResolve] Looking up ID: ${candidateId}, Available users:`, Object.keys(users || {}));
   
-  // Explicit mapping for known users - cannot be confused
-  const knownUsers = {
-    '1': { id: '1', username: 'Ben Johns', first_name: 'Ben', last_name: 'Johns', role: 'super_admin' },
-    '2': { id: '2', username: 'Benjamin Test', first_name: 'Benjamin', last_name: 'Test', role: 'user' }
-  };
-  
-  // If we have explicit data for this ID, use it
-  if (knownUsers[candidateId]) {
-    console.log(`[UserResolve] Using known user for ${candidateId}: ${knownUsers[candidateId].username}`);
-    return knownUsers[candidateId];
-  }
-  
-  // Trust embedded only if it matches ID exactly
+  // 1. Trust embedded data from Redis Streams (most accurate, includes historical snapshot)
   if (embedded && String(embedded.id) === String(candidateId)) {
-    console.log(`[UserResolve] Using embedded user for ${candidateId}: ${embedded.username}`);
+    console.log(`[UserResolve] Using embedded Redis data for ${candidateId}: ${embedded.username}`);
     return embedded;
   }
 
-  // Try users state lookup
+  // 2. Try users state lookup (real-time data from Redis)
   const stateUser = users[candidateId] || users[String(candidateId)] || users[parseInt(candidateId)];
   if (stateUser && String(stateUser.id) === String(candidateId)) {
     console.log(`[UserResolve] Using state user for ${candidateId}: ${stateUser.username}`);
     return stateUser;
   }
 
-  // Fallback
+  // 3. Fallback - Redis should be source of truth, no hardcoded overrides
   console.log(`[UserResolve] Using fallback for ${candidateId}`);
   return { id: candidateId, username: `User ${candidateId}` };
 };

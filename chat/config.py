@@ -23,8 +23,21 @@ class Config(object):
         REDIS_HOST, REDIS_PORT = tuple(redis_endpoint_url.split(":"))
         REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", None)
     
-    SECRET_KEY = os.environ.get("SECRET_KEY", "Optional default value")
+    # Generate secure SECRET_KEY - CRITICAL for session security
+    SECRET_KEY = os.environ.get("SECRET_KEY")
+    if not SECRET_KEY:
+        import secrets
+        print("⚠️  WARNING: SECRET_KEY not set! Generating temporary key for this session.")
+        print("⚠️  For production, set SECRET_KEY environment variable to a secure random string.")
+        SECRET_KEY = secrets.token_hex(32)
+    
     SESSION_TYPE = "redis"
+    SESSION_PERMANENT = False
+    SESSION_USE_SIGNER = True
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    
     redis_client = redis.Redis(
         host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD
     )
