@@ -60,13 +60,15 @@ const MessageList = ({
               return <InfoMessage key={key} message={message.message} />;
             }
             if (+message.from !== +user.id) {
+              // Only show sender info if we have the correct user data
+              const senderUser = users[message.from];
               return (
                 <SenderMessage
                   onUserClicked={() => onUserClicked(message.from)}
                   key={key}
                   message={message.message}
                   date={message.date}
-                  user={users[message.from]}
+                  user={senderUser || null}  // Prevent wrong user data fallback
                 />
               );
             }
