@@ -1,6 +1,6 @@
 import guideOpsLogo from '../assets/guideops-logo.png';
 
-const Logo = ({ width = 64, height = 64 }) => {
+const Logo = ({ width = 96, height = 96 }) => {
   return (
     <img 
       src={guideOpsLogo}

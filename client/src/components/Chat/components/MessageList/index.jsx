@@ -15,50 +15,51 @@ const MessageList = ({
   user,
   onUserClicked,
   users,
-}) => (
-  <div
-    ref={messageListElement}
-    className="chat-box-wrapper position-relative d-flex"
-  >
-    {messages === undefined ? (
-      <MessagesLoading />
-    ) : messages.length === 0 ? (
-      <NoMessages />
-    ) : (
-      <></>
-    )}
-    <div className="px-4 pt-5 chat-box position-absolute">
-      {messages && messages.length !== 0 && (
-        <>
-          {room.offset && room.offset >= MESSAGES_TO_LOAD ? (
+}) => {
+  return (
+    <div
+      ref={messageListElement}
+      className="chat-messages-mobile"
+      style={{
+        height: '100%',
+        overflowY: 'auto',
+        padding: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        WebkitOverflowScrolling: 'touch'
+      }}
+    >
+      {messages === undefined ? (
+        <MessagesLoading />
+      ) : messages.length === 0 ? (
+        <NoMessages />
+      ) : (
+        <div className="messages-list">
+          {/* Load More Button */}
+          {room && room.offset && room.offset >= MESSAGES_TO_LOAD && (
             <div className="d-flex flex-row align-items-center mb-4">
-              <div
-                style={{ height: 1, backgroundColor: "#eee", flex: 1 }}
-              ></div>
+              <div style={{ height: 1, backgroundColor: "#eee", flex: 1 }}></div>
               <div className="mx-3">
                 <button
-                  aria-haspopup="true"
-                  aria-expanded="true"
                   type="button"
                   onClick={onLoadMoreMessages}
                   className="btn rounded-button btn-secondary nav-btn"
-                  id="__BVID__168__BV_toggle_"
                 >
                   Load more
                 </button>
               </div>
-              <div
-                style={{ height: 1, backgroundColor: "#eee", flex: 1 }}
-              ></div>
+              <div style={{ height: 1, backgroundColor: "#eee", flex: 1 }}></div>
             </div>
-          ) : (
-            <></>
           )}
+          
+          {/* Messages */}
           {messages.map((message, x) => {
             const key = message.message + message.date + message.from + x;
+            
             if (message.from === "info") {
               return <InfoMessage key={key} message={message.message} />;
             }
+            
             if (+message.from !== +user.id) {
               // Use embedded user data from message (always available)
               const senderUser = message.user || users[message.from];
@@ -68,24 +69,23 @@ const MessageList = ({
                   key={key}
                   message={message.message}
                   date={message.date}
-                  user={senderUser}  // Always has correct user data
+                  user={senderUser}
                 />
               );
             }
+            
             return (
               <ReceiverMessage
-                username={
-                  users[message.from] ? users[message.from].username : ""
-                }
+                username={users[message.from] ? users[message.from].username : ""}
                 key={key}
                 message={message.message}
                 date={message.date}
               />
             );
           })}
-        </>
+        </div>
       )}
     </div>
-  </div>
-);
+  );
+};
 export default MessageList;

@@ -1,0 +1,73 @@
+/* Mobile-First Responsive Design for GuideOps Chat */
+
+/* Ensure proper mobile viewport handling */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Prevent scrolling on body */
+}
+
+/* Full-screen app container */
+.full-height {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile chat container - fills entire viewport */
+.mobile-chat-container {
+  height: 100vh !important;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+/* iPhone X+ Safe Areas */
+@supports(padding: max(0px)) {
+  .mobile-chat-container {
+    padding-top: max(env(safe-area-inset-top), 0px);
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+    height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+
+/* Different screen sizes */
+@media (max-width: 375px) { /* iPhone SE, small phones */
+  .mobile-header {
+    padding: 8px 12px !important;
+  }
+  .typing-area-fixed {
+    min-height: 50px !important;
+  }
+}
+
+@media (min-width: 768px) { /* Tablets */
+  .mobile-chat-container {
+    max-width: 768px;
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 992px) { /* Desktop */
+  .mobile-chat-container {
+    height: auto !important;
+    min-height: calc(100vh - 60px); /* Account for navbar */
+  }
+}
+
+/* Landscape orientation */
+@media (orientation: landscape) {
+  .mobile-header {
+    min-height: 50px !important;
+    padding: 8px 16px !important;
+  }
+}
+
+/* PWA display mode */
+@media (display-mode: standalone) {
+  .mobile-chat-container {
+    /* When installed as PWA, use full screen */
+    height: 100vh;
+    padding-top: 0;
+  }
+}

@@ -92,7 +92,7 @@ const useSocket = (user, dispatch) => {
         // Configure Socket.IO for split deployment
         const socketURL = process.env.NODE_ENV === 'production' 
           ? process.env.REACT_APP_API_URL || 'https://redis-guideops-chat-production.up.railway.app'
-          : '';
+          : 'https://redis-guideops-chat-production.up.railway.app'; // Use live backend for local dev
         
         console.log(`[Socket.IO] Connecting to: ${socketURL || 'localhost'}`);
         socketRef.current = io(socketURL, {

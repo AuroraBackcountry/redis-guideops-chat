@@ -13,8 +13,7 @@ import { createChannel } from "../../api";
  *  user: import("../../state").UserEntry
  * }} props
  */
-export default function Chat({ onLogOut, user, onMessageSend }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export default function Chat({ onLogOut, user, onMessageSend, sidebarOpen, setSidebarOpen }) {
   
   const {
     onLoadMoreMessages,
@@ -30,6 +29,38 @@ export default function Chat({ onLogOut, user, onMessageSend }) {
     messages,
     users,
   } = useChatHandlers(user);
+
+  // Touch gesture handling for swipe to reveal sidebar
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+
+  const minSwipeDistance = 50; // Minimum distance for swipe
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    // Swipe right = open sidebar (show channels)
+    if (isRightSwipe && !sidebarOpen) {
+      setSidebarOpen(true);
+    }
+    // Swipe left = close sidebar  
+    if (isLeftSwipe && sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  };
 
   const handleCreateChannel = async () => {
     const name = prompt('Enter channel name:');
@@ -49,30 +80,25 @@ export default function Chat({ onLogOut, user, onMessageSend }) {
 
   return (
     <div className="mobile-chat-container" style={{ 
-      height: '100vh', 
+      flex: 1, // Fill remaining space after navbar
       display: 'flex', 
       flexDirection: 'column',
-      backgroundColor: '#f8f9fa'
+      backgroundColor: '#f8f9fa',
+      overflow: 'hidden', // Prevent body scrolling
+      position: 'relative'
     }}>
       
-      {/* Mobile Header with Hamburger */}
-      <div className="mobile-header d-flex d-lg-none align-items-center justify-content-between" style={{
+      {/* Mobile Header - Centered Room Name */}
+      <div className="mobile-header d-flex d-lg-none align-items-center justify-content-center" style={{
         padding: '12px 16px',
         backgroundColor: '#fff',
         borderBottom: '1px solid #eee',
-        minHeight: '60px'
+        minHeight: '60px',
+        flexShrink: 0  // Fixed size header
       }}>
-        <button 
-          className="btn btn-light"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          style={{ border: 'none', padding: '8px' }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 12h18M3 6h18M3 18h18"/>
-          </svg>
-        </button>
-        <h5 className="mb-0">{room ? room.name : "GuideOps Chat"}</h5>
-        <div style={{ width: '36px' }}></div> {/* Spacer for centering */}
+        <h5 className="mb-0" style={{ fontWeight: '500' }}>
+          {room ? room.name : "GuideOps Chat"}
+        </h5>
       </div>
 
       <div className="chat-body-mobile" style={{ 
@@ -110,7 +136,6 @@ export default function Chat({ onLogOut, user, onMessageSend }) {
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <ChatList
               user={user}
-              onLogOut={onLogOut}
               rooms={rooms}
               currentRoom={currentRoom}
               dispatch={dispatch}
@@ -133,27 +158,43 @@ export default function Chat({ onLogOut, user, onMessageSend }) {
           </div>
         </div>
 
-        {/* Chat Area */}
+        {/* Chat Area - Mobile First with Swipe Gestures */}
         <div 
           className="chat-area-mobile"
           style={{
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            backgroundColor: '#fff'
+            backgroundColor: '#fff',
+            position: 'relative',
+            height: '100%'
           }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
         >
           {/* Desktop Chat Header */}
           <div className="d-none d-lg-flex align-items-center justify-content-between" style={{
             padding: '16px 20px',
             borderBottom: '1px solid #eee',
-            minHeight: '60px'
+            minHeight: '60px',
+            flexShrink: 0
           }}>
             <h5 className="mb-0">{room ? room.name : "Select a Channel"}</h5>
           </div>
 
-          {/* Message List */}
-          <div style={{ flex: 1, overflow: 'hidden' }}>
+          {/* Message List - Dynamic height fills available space */}
+          <div 
+            className="messages-container"
+            style={{ 
+              flex: 1,
+              overflow: 'auto',
+              minHeight: 0, // Allow flex to shrink below content size
+              WebkitOverflowScrolling: 'touch', // Smooth iOS scrolling
+              // Ensures proper scrolling on all mobile browsers
+              overscrollBehavior: 'contain'
+            }}
+          >
             <MessageList
               messageListElement={messageListElement}
               messages={messages}
@@ -165,8 +206,18 @@ export default function Chat({ onLogOut, user, onMessageSend }) {
             />
           </div>
 
-          {/* Typing Area */}
-          <div style={{ borderTop: '1px solid #eee' }}>
+          {/* Typing Area - Fixed at bottom */}
+          <div 
+            className="typing-area-fixed"
+            style={{ 
+              borderTop: '1px solid #eee',
+              backgroundColor: '#fff',
+              flexShrink: 0,  // Fixed size input area
+              minHeight: '60px', // Minimum input height
+              position: 'relative',
+              zIndex: 10
+            }}
+          >
             <TypingArea
               message={message}
               setMessage={setMessage}

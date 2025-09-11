@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { getButtonLinks } from "../api";
 
-const Navbar = () => {
+const Navbar = ({ sidebarOpen, setSidebarOpen, currentRoom, user, onLogOut, menuOpen, setMenuOpen }) => {
   /**
    * @type {[{
    *  heroku?: string;
@@ -12,9 +12,11 @@ const Navbar = () => {
    *  }, React.Dispatch<any>]}
    */
   const [links, setLinks] = useState(null);
+  
   useEffect(() => {
     getButtonLinks().then(setLinks);
   }, []);
+  
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-white" style={{
       minHeight: '60px',
@@ -29,7 +31,21 @@ const Navbar = () => {
       }}>
         GuideOps Chat
       </span>
-      {/* Removed GitHub link for cleaner mobile experience */}
+      
+      {/* Mobile: Hamburger menu button (only when logged in) */}
+      {user && setMenuOpen && (
+        <div className="d-flex d-lg-none">
+          <button 
+            className="btn btn-light"
+            onClick={() => setMenuOpen(!menuOpen)}
+            style={{ border: 'none', padding: '8px' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 12h18M3 6h18M3 18h18"/>
+            </svg>
+          </button>
+        </div>
+      )}
     </nav>
   );
 };
