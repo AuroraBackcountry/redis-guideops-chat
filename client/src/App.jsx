@@ -117,11 +117,22 @@ const useAppHandlers = () => {
   useEffect(() => {
     /** @ts-ignore */
     if (Object.values(state.rooms).length === 0 && user !== null) {
-      /** First of all fetch online users. */
+      /** First fetch online users, then get all users for complete data */
       getOnlineUsers().then((users) => {
         dispatch({
           type: "append users",
           payload: users,
+        });
+        
+        // Also fetch all users to ensure we have complete user data for messages
+        const allUserIds = Array.from({length: 10}, (_, i) => (i + 1).toString());
+        getUsers(allUserIds).then((allUsers) => {
+          dispatch({
+            type: "append users", 
+            payload: allUsers,
+          });
+        }).catch(() => {
+          // Ignore errors - some user IDs might not exist
         });
       });
       /** Then get rooms. */
