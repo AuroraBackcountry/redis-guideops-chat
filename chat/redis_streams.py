@@ -230,13 +230,78 @@ class RedisStreamsChat:
                     
                     new_messages.append(message)
                     
-                    # Update user's last seen for this room
-                    self.set_last_seen(user_id, room_id, stream_id_str)
+                    # DO NOT advance last_seen here - only advance on client ACK
+                    # The client must explicitly acknowledge receipt via /v2/ack endpoint
             
             return new_messages
             
         except Exception as e:
             print(f"[XREAD] Error in blocking read: {e}")
+            return []
+    
+    def get_catchup_messages(self, user_id: str, room_id: str, max_count: int = 50) -> List[Dict[str, Any]]:
+        """
+        Get catch-up messages from user's last seen ID to current
+        Used for initial connection backfill
+        """
+        stream_key = self.get_room_stream_key(room_id)
+        last_seen = self.get_last_seen(user_id, room_id)
+        
+        # If no cursor, get recent messages
+        if not last_seen:
+            result = self.get_messages(room_id, count=max_count)
+            return result.get('messages', [])
+        
+        try:
+            # XRANGE from last_seen to current ('+')
+            messages = self.redis.xrange(stream_key, f"({last_seen}", "+", count=max_count)
+            
+            formatted_messages = []
+            for stream_id, fields in messages:
+                # Use same processing logic as get_messages
+                stream_id_str = stream_id.decode('utf-8') if isinstance(stream_id, bytes) else stream_id
+                
+                decoded_fields = {}
+                for key, value in fields.items():
+                    decoded_key = key.decode('utf-8') if isinstance(key, bytes) else key
+                    decoded_value = value.decode('utf-8') if isinstance(value, bytes) else value
+                    decoded_fields[decoded_key] = decoded_value
+                
+                user_snapshot = {}
+                try:
+                    user_snapshot = json.loads(decoded_fields.get("user_snapshot", "{}"))
+                except json.JSONDecodeError:
+                    pass
+                
+                location_data = {}
+                try:
+                    if decoded_fields.get("location"):
+                        location_data = json.loads(decoded_fields.get("location", "{}"))
+                except json.JSONDecodeError:
+                    pass
+                
+                message = {
+                    "id": stream_id_str,
+                    "roomId": decoded_fields.get("room_id", room_id),
+                    "from": decoded_fields.get("user_id", ""),
+                    "user": user_snapshot,
+                    "text": decoded_fields.get("text", ""),
+                    "message": decoded_fields.get("text", ""),
+                    "tsServer": int(decoded_fields.get("ts_server", 0)),
+                    "tsIso": decoded_fields.get("ts_iso", ""),
+                    "date": int(int(decoded_fields.get("ts_server", 0)) / 1000),
+                    "kind": decoded_fields.get("kind", "message")
+                }
+                
+                if location_data:
+                    message["location"] = location_data
+                
+                formatted_messages.append(message)
+            
+            return formatted_messages
+            
+        except Exception as e:
+            print(f"[Catchup] Error getting catch-up messages: {e}")
             return []
     
     def get_messages(self, room_id: str, count: int = 15, before_id: Optional[str] = None) -> Dict[str, Any]:

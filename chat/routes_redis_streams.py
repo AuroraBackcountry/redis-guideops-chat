@@ -86,6 +86,38 @@ def send_message_v2(room_id):
         return jsonify({"ok": False, "error": "Failed to send message"}), 500
 
 
+@app.route("/v2/ack", methods=["POST"])
+def acknowledge_messages():
+    """Client acknowledges receipt of messages - advances cursors"""
+    # Get request data
+    body = request.get_json() or {}
+    
+    # Extract user ID (same pattern as send_message_v2)
+    if "user" in session:
+        user_id = session["user"]["id"]
+    else:
+        user_id = body.get("user_id") or body.get("userId") or "1"
+    
+    # Get acknowledgments: {room_id: last_message_id}
+    acks = body.get("acks", {})
+    
+    if not acks:
+        return jsonify({"ok": False, "error": "No acknowledgments provided"}), 400
+    
+    try:
+        # Update cursors for each acknowledged room
+        for room_id, last_message_id in acks.items():
+            if last_message_id and '-' in str(last_message_id):  # Validate stream ID format
+                redis_streams.set_last_seen(user_id, room_id, str(last_message_id))
+                print(f"[ACK] User {user_id} acknowledged room {room_id} up to {last_message_id}")
+        
+        return jsonify({"ok": True, "acknowledged": len(acks)}), 200
+        
+    except Exception as e:
+        print(f"[ACK] Error processing acknowledgments: {e}")
+        return jsonify({"ok": False, "error": "Failed to process acknowledgments"}), 500
+
+
 @app.route("/v2/rooms/<room_id>/clear", methods=["DELETE"])
 def clear_room_messages_v2(room_id):
     """Clear all messages from room (admin only, for fresh start)"""

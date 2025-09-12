@@ -757,6 +757,22 @@ def stream_v2(user_id):
         # Get user's rooms (for now just room 0, but could expand)
         room_ids = ["0"]  # TODO: Get from user:{user_id}:rooms
         
+        # Initial catch-up: send any missed messages since last seen
+        try:
+            for room_id in room_ids:
+                catchup_messages = redis_streams.get_catchup_messages(user_id, room_id, max_count=50)
+                for message in catchup_messages:
+                    event_data = {"type": "message", "data": message}
+                    print(f"[StreamV2] Catch-up message: {message['id']} from user {message.get('user', {}).get('username', 'unknown')}")
+                    yield f"data: {json.dumps(event_data)}\n\n"
+            
+            # Send backlog_end marker
+            yield f"data: {json.dumps({'type': 'backlog_end', 'timestamp': int(time.time() * 1000)})}\n\n"
+            print(f"[StreamV2] Catch-up complete for user {user_id}, starting real-time XREAD")
+            
+        except Exception as e:
+            print(f"[StreamV2] Error in catch-up for user {user_id}: {e}")
+        
         try:
             while True:
                 # XREAD blocking across all user's rooms
