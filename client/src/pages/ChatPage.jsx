@@ -5,7 +5,7 @@ import MessageListV2 from "../components/MessageListV2";
 import TypingArea from "../components/Chat/components/TypingArea";
 import useChatHandlers from "../components/Chat/use-chat-handlers";
 import { getMessagesV2, sendMessageV2 } from "../api-v2";
-import { getTestMessages, sendTestMessage } from "../api-v2-test";
+// Removed api-v2-test import - file doesn't exist
 
 /**
  * Chat Page - Main messaging interface
@@ -308,7 +308,7 @@ export default function ChatPage({ user, onMessageSend }) {
       
       // Fallback: Use test data to show Redis Streams format
       try {
-        const result = await getTestMessages();
+        const result = await getMessagesV2(roomId);
         setMessages(result.messages);
         setHasMore(result.hasMore);
         setOldestId(result.oldestId);
@@ -374,7 +374,7 @@ export default function ChatPage({ user, onMessageSend }) {
       // Fallback: Simulate Redis Streams message for testing attribution
       try {
         const currentUser = user || JSON.parse(localStorage.getItem('guideops_user') || '{}');
-        let newMessage = await sendTestMessage(roomId, messageText.trim(), currentUser);
+        let newMessage = await sendMessageV2(roomId, { text: messageText.trim() });
         
         // Add location to test message if available
         if (userLocation && locationPermission === 'granted') {
