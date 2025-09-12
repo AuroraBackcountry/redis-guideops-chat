@@ -9,6 +9,7 @@ from chat.redis_streams import redis_streams
 from chat import utils
 from chat.message_validator import publish_message, validate_and_normalize_msg
 from chat.utils import redis_client
+from chat.routes import get_user_data  # Import user data function
 import json
 
 @app.route("/v2/rooms/<room_id>/messages", methods=["GET"])
