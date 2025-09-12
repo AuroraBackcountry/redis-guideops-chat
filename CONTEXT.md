@@ -10,21 +10,26 @@
 
 **Repository**: `https://github.com/AuroraBackcountry/redis-guideops-chat.git`
 
-**Current Status**: ✅ **LIVE IN PRODUCTION** - Complete SaaS chat system deployed on Railway + Redis Cloud
+**Current Status**: 🔄 **V2 MIGRATION IN PROGRESS** - Implementing unified Redis Streams schema with GPS support
 
-**Target**: Mobile-first PWA (achieved) → Native iOS/Android apps → AI integration
+**Target**: Complete V2 migration → Stable production system → AI integration
 
 ---
 
-## 🎯 **Production Deployment Achieved**
+## 🎯 **V2 System Architecture (Current)**
 
-### ✅ **Live Production System**
-- **Railway Deployment**: Flask backend live at `redis-guideops-chat-production.up.railway.app`
-- **Redis Cloud**: US-West region database with 4-year retention capability
-- **Mobile-First**: Responsive design working on phones and computers
-- **Real-time Messaging**: Cross-device communication working globally
-- **User Registration**: Complete SaaS onboarding with first user = account owner
-- **Professional Branding**: "GuideOps Chat" throughout the interface
+### ✅ **Production Infrastructure**
+- **Frontend**: Vercel deployment with React auto-build from source
+- **Backend**: Railway Flask API at `redis-guideops-chat-production.up.railway.app`
+- **Database**: Redis Cloud (US-West) with Redis Streams storage
+- **Schema**: Unified V2 format (message_id, author_id, ts_ms, GPS coordinates)
+
+### 🔄 **V2 Migration Status**
+- **✅ V1 Code Eliminated**: Removed ZSET storage, old Socket.IO handlers, demo data
+- **✅ Unified Schema**: Implemented surgical plan message validation
+- **✅ Security**: Server-side identity stamping, client fields ignored
+- **🔄 In Progress**: Socket.IO V2 handlers, complete frontend migration
+- **🔄 Testing**: Clean Redis database, CORS fixes applied
 
 ### ✅ **Core Features Working in Production**
 - **Beautiful SaaS Registration**: First user = account owner (super_admin), automatic role assignment
