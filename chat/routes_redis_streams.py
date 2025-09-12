@@ -49,7 +49,8 @@ def send_message_v2(room_id):
     
     # Get request data
     body = request.get_json() or {}
-    message_text = body.get("text", "").strip()
+    # Accept both "text" (V2 standard) and "message" (frontend compatibility)
+    message_text = (body.get("text") or body.get("message", "")).strip()
     
     if not message_text:
         return jsonify({"ok": False, "error": "Message text required"}), 400
