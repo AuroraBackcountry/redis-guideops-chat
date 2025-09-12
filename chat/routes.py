@@ -457,15 +457,132 @@ def get_rooms(user_id):
 # Removed duplicate route - using enhanced version with user data below
 
 @app.route("/")
-def api_status():
-    """API-only backend status - Frontend served by Vercel"""
-    return jsonify({
-        "status": "API Ready",
-        "message": "GuideOps Chat Backend API",
-        "frontend_url": "https://guideops-chat-frontend.vercel.app",
-        "version": "2.0",
-        "architecture": "Split Deployment (Railway + Vercel)"
-    })
+def server_status_page():
+    """Railway Backend Status Page - Comprehensive Server Information"""
+    import time
+    import os
+    from datetime import datetime
+    
+    # Get system information
+    current_time = datetime.now().isoformat()
+    
+    # Test Redis connection
+    redis_status = "❌ Disconnected"
+    redis_info = "Unable to connect"
+    try:
+        redis_client.ping()
+        redis_status = "✅ Connected"
+        total_users = redis_client.get("total_users")
+        online_users = redis_client.scard("online_users")
+        redis_info = f"Users: {total_users.decode() if total_users else 0}, Online: {online_users}"
+    except Exception as e:
+        redis_info = f"Error: {str(e)}"
+    
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>GuideOps Chat API Server Status</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                   max-width: 900px; margin: 0 auto; padding: 20px; background: #f8f9fa; }}
+            .container {{ background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
+            .header {{ text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #007bff; }}
+            .status-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 30px 0; }}
+            .status-card {{ background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #007bff; }}
+            .endpoints {{ background: #e7f3ff; padding: 20px; border-radius: 8px; margin: 30px 0; }}
+            .endpoint {{ margin: 10px 0; font-family: 'Monaco', 'Menlo', monospace; background: white; 
+                        padding: 12px; border-radius: 6px; border: 1px solid #dee2e6; }}
+            .btn {{ display: inline-block; padding: 10px 20px; margin: 5px; background: #007bff; 
+                   color: white; text-decoration: none; border-radius: 6px; }}
+            .btn:hover {{ background: #0056b3; }}
+            h1 {{ color: #007bff; margin: 0; }}
+            h3 {{ color: #333; margin-top: 30px; }}
+            .healthy {{ color: #28a745; font-weight: bold; }}
+            .error {{ color: #dc3545; font-weight: bold; }}
+            .info {{ background: #d1ecf1; padding: 15px; border-radius: 6px; margin: 20px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🚀 GuideOps Chat API Server</h1>
+                <p>Railway Backend Status & Monitoring</p>
+                <p><strong>Status:</strong> <span class="healthy">Backend Online</span></p>
+            </div>
+            
+            <div class="status-grid">
+                <div class="status-card">
+                    <h4>🗄️ Database Status</h4>
+                    <p><strong>Redis Cloud:</strong> {redis_status}</p>
+                    <p><strong>Details:</strong> {redis_info}</p>
+                    <p><strong>Storage:</strong> Redis Streams (V2)</p>
+                </div>
+                
+                <div class="status-card">
+                    <h4>🌐 Network & Security</h4>
+                    <p><strong>CORS:</strong> ✅ Vercel Origins Allowed</p>
+                    <p><strong>Sessions:</strong> ✅ Redis-backed, SameSite=None</p>
+                    <p><strong>Socket.IO:</strong> ✅ V2 Handlers Active</p>
+                </div>
+                
+                <div class="status-card">
+                    <h4>⚙️ System Info</h4>
+                    <p><strong>Time:</strong> {current_time}</p>
+                    <p><strong>Environment:</strong> {os.environ.get('FLASK_ENV', 'development')}</p>
+                    <p><strong>Version:</strong> V2 (Redis Streams + GPS)</p>
+                </div>
+                
+                <div class="status-card">
+                    <h4>🏗️ Architecture</h4>
+                    <p><strong>Frontend:</strong> Vercel (React)</p>
+                    <p><strong>Backend:</strong> Railway (Flask)</p>
+                    <p><strong>Database:</strong> Redis Cloud (US-West)</p>
+                </div>
+            </div>
+            
+            <div class="endpoints">
+                <h3>📡 V2 API Endpoints</h3>
+                <div class="endpoint">GET /me - Check user session</div>
+                <div class="endpoint">POST /register - Create account (first user = super_admin)</div>
+                <div class="endpoint">POST /login - User authentication</div>
+                <div class="endpoint">GET /v2/rooms/{{id}}/messages - Get messages with GPS metadata</div>
+                <div class="endpoint">POST /v2/rooms/{{id}}/messages - Send message with optional GPS</div>
+                <div class="endpoint">GET /users/online - Online users list</div>
+                <div class="endpoint">GET /rooms/{{user_id}} - User's rooms</div>
+            </div>
+            
+            <div class="info">
+                <h3>🔗 Quick Links</h3>
+                <a href="/admin" class="btn">Admin Panel</a>
+                <a href="/system/status" class="btn">System Status JSON</a>
+                <a href="/users/online" class="btn">Online Users JSON</a>
+                <a href="https://guideops-chat-frontend.vercel.app" class="btn">Frontend Application</a>
+            </div>
+            
+            <div class="info">
+                <h3>📍 Message Schema (V2)</h3>
+                <pre style="background: white; padding: 15px; border-radius: 6px; overflow-x: auto;">{{
+  "message_id": "uuid-v4",
+  "room_id": "0",
+  "author_id": "1",
+  "text": "Hello from Vancouver!",
+  "ts_ms": 1757563715000,
+  "lat": 49.2827,
+  "long": -123.1207,
+  "v": 2
+}}</pre>
+            </div>
+            
+            <hr style="margin: 40px 0;">
+            <p style="text-align: center; color: #666;">
+                GuideOps Chat API Server | Railway Deployment | Redis Streams V2
+            </p>
+        </div>
+    </body>
+    </html>
+    '''
 
 @app.route("/register-page")
 def beautiful_registration():
@@ -841,7 +958,7 @@ def get_users():
         if user:
             users.append(user)
     
-    return jsonify(users)
+        return jsonify(users)
 
 # V1 ZSET message endpoint removed - use /v2/rooms/{id}/messages only
 
