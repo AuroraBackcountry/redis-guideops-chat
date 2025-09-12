@@ -25,6 +25,23 @@ console.log('[API v2] Base URL:', BASE_URL);
  * @param {string} beforeId - Stream ID for pagination (optional)
  * @returns {Promise<{messages: Array, hasMore: boolean, oldestId: string, newestId: string}>}
  */
+// Add missing V2 API functions for App.jsx compatibility
+export const getOnlineUsersV2 = () => {
+  return axios.get(url('/users/online'))
+    .then(x => x.data)
+    .catch(e => { 
+      throw new Error(e.response && e.response.data && e.response.data.error || 'Failed to get online users'); 
+    });
+};
+
+export const getRoomsV2 = (userId) => {
+  return axios.get(url(`/rooms/${userId}`))
+    .then(x => x.data)
+    .catch(e => { 
+      throw new Error(e.response && e.response.data && e.response.data.error || 'Failed to get rooms'); 
+    });
+};
+
 export const getMessagesV2 = (roomId, count = 15, beforeId = null) => {
   const params = { count };
   if (beforeId) {

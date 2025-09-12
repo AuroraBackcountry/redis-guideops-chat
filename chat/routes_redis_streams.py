@@ -7,6 +7,8 @@ from flask import request, jsonify, session
 from chat.app import app
 from chat.redis_streams import redis_streams
 from chat import utils
+from chat.message_validator import publish_message, validate_and_normalize_msg
+from chat.utils import redis_client
 import json
 
 @app.route("/v2/rooms/<room_id>/messages", methods=["GET"])
@@ -36,49 +38,33 @@ def get_room_messages_v2(room_id):
 
 @app.route("/v2/rooms/<room_id>/messages", methods=["POST"])
 def send_message_v2(room_id):
-    """Send message using Redis Streams - perfect attribution"""
+    """Send message using unified schema - surgical plan implementation"""
     if "user" not in session:
         return jsonify({"error": "Not authenticated"}), 401
     
-    user_id = session["user"]["id"]
+    # Authoritative user from session
+    user = session["user"]
     
-    data = request.get_json()
-    message_text = data.get("message", "").strip()
-    latitude = data.get("latitude")  # Optional GPS latitude
-    longitude = data.get("longitude")  # Optional GPS longitude
+    # Get request data
+    body = request.get_json() or {}
     
-    if not message_text:
-        return jsonify({"error": "Message cannot be empty"}), 400
-    
-    # Validate GPS coordinates if provided
-    if (latitude is not None or longitude is not None):
-        if latitude is None or longitude is None:
-            return jsonify({"error": "Both latitude and longitude required for location"}), 400
-        try:
-            latitude = float(latitude)
-            longitude = float(longitude)
-            # Basic validation for valid coordinate ranges
-            if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
-                return jsonify({"error": "Invalid GPS coordinates"}), 400
-        except (ValueError, TypeError):
-            return jsonify({"error": "Invalid GPS coordinate format"}), 400
+    # Ignore any client-sent author/from/username (security)
+    for k in ("author_id", "from", "username", "display_name", "user", "user_snapshot"):
+        body.pop(k, None)
     
     try:
-        # Add message to Redis Stream with optional location
-        message = redis_streams.add_message(room_id, user_id, message_text, latitude, longitude)
+        # Use unified message publisher
+        msg = publish_message(room_id, user, body, redis_client)
         
-        # Broadcast via Socket.IO/SSE (existing pub/sub system)
-        utils.redis_client.publish("MESSAGES", json.dumps({
-            "type": "message",
-            "data": message
-        }))
+        print(f"[API v2] Message sent to room {room_id} by user {user['id']}: {msg['message_id']}")
         
-        print(f"[API] Message sent to room {room_id} by user {user_id}: {message['id']}")
+        return jsonify({"ok": True, "message": msg}), 201
         
-        return jsonify(message), 201
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
     except Exception as e:
-        print(f"[API] Error sending message to room {room_id}: {e}")
-        return jsonify({"error": "Failed to send message"}), 500
+        print(f"[API v2] Error sending message to room {room_id}: {e}")
+        return jsonify({"ok": False, "error": "Failed to send message"}), 500
 
 
 @app.route("/v2/rooms/<room_id>/clear", methods=["DELETE"])

@@ -843,39 +843,7 @@ def get_users():
     
     return jsonify(users)
 
-@app.route("/room/<room_id>/messages")
-def get_room_messages(room_id):
-    """Get messages for a room"""
-    offset = int(request.args.get('offset', 0))
-    size = int(request.args.get('size', 15))
-    
-    # Get messages from Redis sorted set
-    messages = redis_client.zrevrange(f"room:{room_id}", offset, offset + size - 1, withscores=True)
-    
-    result = []
-    for message_data, timestamp in messages:
-        try:
-            # Parse the message JSON
-            import json
-            message = json.loads(message_data.decode('utf-8'))
-            
-            # Convert to frontend expected format WITH user data
-            user_id = str(message.get('from', ''))
-            user_data = get_user_data(user_id) if user_id else None
-            
-            formatted_message = {
-                "message": message.get('message', ''),
-                "date": int(timestamp),
-                "from": user_id,
-                "roomId": str(message.get('roomId', room_id)),
-                "user": user_data  # Include complete user data with message
-            }
-            result.append(formatted_message)
-        except (json.JSONDecodeError, UnicodeDecodeError) as e:
-            print(f"Error parsing message: {e}")
-            continue
-    
-    return jsonify(result)
+# V1 ZSET message endpoint removed - use /v2/rooms/{id}/messages only
 
 @app.route("/links")
 def get_links():

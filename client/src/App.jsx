@@ -6,7 +6,7 @@ import ChatPage from "./pages/ChatPage";
 import ChannelsPage from "./pages/ChannelsPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
-import { getOnlineUsers, getRooms } from "./api";
+import { getOnlineUsersV2, getRoomsV2 } from "./api-v2";
 import useAppStateContext, { AppContext } from "./state";
 import moment from "moment";
 import { parseRoomName } from "./utils";
@@ -196,7 +196,7 @@ const useAppHandlers = () => {
       }
       
       /** Then fetch online users and update cache */
-      getOnlineUsers().then((users) => {
+      getOnlineUsersV2().then((users) => {
         dispatch({
           type: "append users",
           payload: users,

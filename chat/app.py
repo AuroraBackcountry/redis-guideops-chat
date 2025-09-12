@@ -8,7 +8,7 @@ from flask_socketio import SocketIO
 
 from chat import utils
 from chat.config import get_config
-from chat.socketio_signals import io_connect, io_disconnect, io_join_room, io_on_message
+# V1 socketio_signals removed - using V2 Redis Streams only
 
 sess = Session()
 # Configure Flask app for API-only mode (no static serving)
@@ -74,11 +74,7 @@ def run_app():
     socketio.run(app, port=port, debug=not is_production, use_reloader=not is_production, host='0.0.0.0')
 
 
-# this was rewritten from decorators so we can move this methods to another file
-socketio.on_event("connect", io_connect)
-socketio.on_event("disconnect", io_disconnect)
-socketio.on_event("room.join", io_join_room)
-socketio.on_event("message", io_on_message)
+# V2 Socket.IO handlers will be implemented in redis_streams.py
 
 # routes moved to another file and we need to import it lately
 # bc they are using app from this file
