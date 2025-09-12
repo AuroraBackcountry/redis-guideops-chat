@@ -751,6 +751,16 @@ def stream_v2(user_id):
     import json
     from chat.redis_streams import redis_streams
     
+    # Security: Validate user_id matches authenticated user
+    if "user" in session:
+        auth_user_id = session["user"]["id"]
+        if str(auth_user_id) != str(user_id):
+            print(f"[StreamV2] Security violation: user {auth_user_id} tried to access stream for user {user_id}")
+            return jsonify({"error": "Unauthorized - can only access your own stream"}), 403
+    else:
+        # For cross-domain requests, we'll need to implement token-based auth later
+        print(f"[StreamV2] Warning: No session for stream access, user_id: {user_id}")
+    
     def xread_event_stream():
         print(f"[StreamV2] XREAD blocking connection established for user {user_id}")
         
@@ -796,12 +806,26 @@ def stream_v2(user_id):
         except Exception as e:
             print(f"[StreamV2] Error in XREAD stream for user {user_id}: {e}")
     
-    # CORS headers for EventSource
+    # Proper SSE headers for cross-domain with credentials
     response = Response(xread_event_stream(), mimetype="text/event-stream")
-    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Cache-Control'] = 'no-cache, no-transform'
     response.headers['Connection'] = 'keep-alive'
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['X-Accel-Buffering'] = 'no'  # Prevent proxy buffering
+    
+    # CORS headers for SSE (must match request origin exactly)
+    origin = request.headers.get('Origin')
+    allowed_origins = [
+        "https://guideops-chat-frontend.vercel.app",
+        "http://localhost:3000"
+    ]
+    
+    if origin in allowed_origins:
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Vary'] = 'Origin'
+    else:
+        print(f"[StreamV2] CORS denied for origin: {origin}")
+        return jsonify({"error": "CORS policy violation"}), 403
     
     return response
 

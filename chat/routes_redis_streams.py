@@ -118,6 +118,32 @@ def acknowledge_messages():
         return jsonify({"ok": False, "error": "Failed to process acknowledgments"}), 500
 
 
+# OPTIONS handlers for CORS preflight requests
+@app.route("/v2/ack", methods=["OPTIONS"])
+@app.route("/v2/rooms/<room_id>/messages", methods=["OPTIONS"])
+def handle_preflight():
+    """Handle CORS preflight requests for POST endpoints"""
+    from flask import Response
+    
+    origin = request.headers.get('Origin')
+    allowed_origins = [
+        "https://guideops-chat-frontend.vercel.app",
+        "http://localhost:3000"
+    ]
+    
+    if origin in allowed_origins:
+        response = Response()
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+        response.headers['Access-Control-Max-Age'] = '86400'  # Cache preflight for 24 hours
+        response.headers['Vary'] = 'Origin'
+        return response
+    else:
+        return jsonify({"error": "CORS policy violation"}), 403
+
+
 @app.route("/v2/rooms/<room_id>/clear", methods=["DELETE"])
 def clear_room_messages_v2(room_id):
     """Clear all messages from room (admin only, for fresh start)"""
