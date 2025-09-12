@@ -29,7 +29,25 @@ def get_room_messages_v2(room_id):
     try:
         result = redis_streams.get_messages(room_id, count, before_id)
         
-        print(f"[API] Room {room_id} messages: {len(result['messages'])} returned, hasMore: {result['hasMore']}")
+        # Enrich messages with user data for frontend compatibility
+        enriched_messages = []
+        for msg in result['messages']:
+            # Get user data for author
+            user_data = get_user_data(msg.get('author_id', msg.get('from', '')))
+            
+            # Create frontend-compatible message
+            enriched_msg = {
+                **msg,  # Include all V2 metadata (lat, long, ts_ms, etc.)
+                'user': user_data,  # Add user data for display
+                'from': msg.get('author_id', msg.get('from', '')),  # V1 compatibility
+                'message': msg.get('text', ''),  # V1 compatibility
+                'date': int(msg.get('ts_ms', 0) / 1000) if msg.get('ts_ms') else 0  # V1 compatibility
+            }
+            enriched_messages.append(enriched_msg)
+        
+        result['messages'] = enriched_messages
+        
+        print(f"[API] Room {room_id} messages: {len(result['messages'])} returned with user enrichment")
         
         return jsonify(result)
     except Exception as e:

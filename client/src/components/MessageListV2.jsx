@@ -67,7 +67,7 @@ const Row = React.memo(function Row({
   }
 
   const handleClick = onUserClicked
-    ? () => onUserClicked(String(userObj?.id ?? message.from))
+    ? () => onUserClicked(String(userObj?.id ?? message.author_id ?? message.from))
     : undefined;
 
   return <SenderMessage {...common} onUserClicked={handleClick} />;
@@ -132,9 +132,10 @@ const MessageListV2 = ({
             </div>
           )}
 
-          {/* Messages with perfect attribution */}
+          {/* Messages with perfect attribution - V2 format */}
           {orderedMessages.map((message) => {
-            const senderId = normId(message?.from);
+            // Handle both V1 (from) and V2 (author_id) formats during migration
+            const senderId = normId(message?.author_id || message?.from);
             const isSelf = senderId === currentUserId;
             
             console.log(`[MessageV2] ID: ${message.id} | From: ${senderId} | Current: ${currentUserId} | IsSelf: ${isSelf} | User: ${message.user?.username}`);
