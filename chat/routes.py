@@ -249,7 +249,7 @@ def register():
         
         # Store user data
         user_key = f"user:{user_id}"
-        redis_client.hmset(user_key, user_profile)
+        redis_client.hset(user_key, mapping=user_profile)
         
         # Create email -> user_id mapping
         redis_client.set(username_key, user_key)
