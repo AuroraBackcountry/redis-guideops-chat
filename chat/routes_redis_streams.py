@@ -19,9 +19,8 @@ def get_room_messages_v2(room_id):
     - count: Number of messages (default 15)  
     - before: Stream ID for pagination (optional)
     """
-    # Temporarily disable auth for V2 testing - will re-enable after session fix
-    # if "user" not in session:
-    #     return jsonify({"error": "Not authenticated"}), 401
+    if "user" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
     
     count = int(request.args.get("count", 15))
     before_id = request.args.get("before")  # Stream ID for pagination
@@ -40,12 +39,11 @@ def get_room_messages_v2(room_id):
 @app.route("/v2/rooms/<room_id>/messages", methods=["POST"])
 def send_message_v2(room_id):
     """Send message using Redis Streams with user data enrichment"""
-    # Temporarily disable auth for V2 testing - will re-enable after session fix
-    # if "user" not in session:
-    #     return jsonify({"error": "Not authenticated"}), 401
+    if "user" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
     
-    # Temporary: Use default user for V2 testing (will fix session auth later)
-    user_id = "1"  # Default to user 1 for testing
+    # Extract user ID from authenticated session
+    user_id = session["user"]["id"]
     
     # Get request data
     body = request.get_json() or {}
@@ -125,9 +123,8 @@ def clear_room_messages_v2(room_id):
 @app.route("/v2/system/migrate", methods=["POST"])
 def migrate_to_redis_streams():
     """Migrate existing messages to Redis Streams (one-time operation)"""
-    # Temporarily disable auth for V2 testing - will re-enable after session fix
-    # if "user" not in session:
-    #     return jsonify({"error": "Not authenticated"}), 401
+    if "user" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
     
     user_role = session["user"].get("role", "user")
     if user_role != "super_admin":
@@ -183,9 +180,8 @@ def debug_session():
 @app.route("/v2/rooms/<room_id>/messages/location", methods=["GET"])
 def get_messages_by_location(room_id):
     """Get messages with location data for API use (location-based analytics)"""
-    # Temporarily disable auth for V2 testing - will re-enable after session fix
-    # if "user" not in session:
-    #     return jsonify({"error": "Not authenticated"}), 401
+    if "user" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
     
     count = int(request.args.get("count", 50))
     before_id = request.args.get("before")
