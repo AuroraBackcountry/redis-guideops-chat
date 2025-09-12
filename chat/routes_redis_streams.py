@@ -7,7 +7,6 @@ from flask import request, jsonify, session
 from chat.app import app
 from chat.redis_streams import redis_streams
 from chat import utils
-from chat.message_validator import publish_message, validate_and_normalize_msg
 from chat.utils import redis_client
 from chat.routes import get_user_data  # Import user data function
 import json
@@ -30,25 +29,7 @@ def get_room_messages_v2(room_id):
     try:
         result = redis_streams.get_messages(room_id, count, before_id)
         
-        # Enrich messages with user data for frontend compatibility
-        enriched_messages = []
-        for msg in result['messages']:
-            # Get user data for author
-            user_data = get_user_data(msg.get('author_id', msg.get('from', '')))
-            
-            # Create frontend-compatible message
-            enriched_msg = {
-                **msg,  # Include all V2 metadata (lat, long, ts_ms, etc.)
-                'user': user_data,  # Add user data for display
-                'from': msg.get('author_id', msg.get('from', '')),  # V1 compatibility
-                'message': msg.get('text', ''),  # V1 compatibility
-                'date': int(msg.get('ts_ms', 0) / 1000) if msg.get('ts_ms') else 0  # V1 compatibility
-            }
-            enriched_messages.append(enriched_msg)
-        
-        result['messages'] = enriched_messages
-        
-        print(f"[API] Room {room_id} messages: {len(result['messages'])} returned with user enrichment")
+        print(f"[API v2] Room {room_id} messages: {len(result['messages'])} returned with Redis Streams enrichment")
         
         return jsonify(result)
     except Exception as e:
@@ -58,30 +39,41 @@ def get_room_messages_v2(room_id):
 
 @app.route("/v2/rooms/<room_id>/messages", methods=["POST"])
 def send_message_v2(room_id):
-    """Send message using unified schema - surgical plan implementation"""
+    """Send message using Redis Streams with user data enrichment"""
     # Temporarily disable auth for V2 testing - will re-enable after session fix
     # if "user" not in session:
     #     return jsonify({"error": "Not authenticated"}), 401
     
     # Temporary: Use default user for V2 testing (will fix session auth later)
-    user = {"id": "1"}  # Default to user 1 for testing
+    user_id = "1"  # Default to user 1 for testing
     
     # Get request data
     body = request.get_json() or {}
+    message_text = body.get("text", "").strip()
     
-    # Ignore any client-sent author/from/username (security)
-    for k in ("author_id", "from", "username", "display_name", "user", "user_snapshot"):
-        body.pop(k, None)
+    if not message_text:
+        return jsonify({"ok": False, "error": "Message text required"}), 400
+    
+    # Extract GPS coordinates if provided
+    latitude = body.get("lat") or body.get("latitude")
+    longitude = body.get("long") or body.get("longitude") 
     
     try:
-        # Use unified message publisher
-        msg = publish_message(room_id, user, body, redis_client)
+        # Use Redis Streams system with user data enrichment
+        result = redis_streams.add_message(
+            room_id=room_id,
+            user_id=user_id,
+            message_text=message_text,
+            latitude=float(latitude) if latitude is not None else None,
+            longitude=float(longitude) if longitude is not None else None
+        )
         
-        print(f"[API v2] Message sent to room {room_id} by user {user['id']}: {msg['message_id']}")
+        print(f"[API v2] Message sent to room {room_id} by user {user_id}: {result['id']}")
         
-        return jsonify({"ok": True, "message": msg}), 201
+        return jsonify({"ok": True, "message": result}), 201
         
     except ValueError as e:
+        print(f"[API v2] Validation error: {e}")
         return jsonify({"ok": False, "error": str(e)}), 400
     except Exception as e:
         print(f"[API v2] Error sending message to room {room_id}: {e}")
