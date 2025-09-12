@@ -44,14 +44,16 @@ def send_message_v2(room_id):
     # if "user" not in session:
     #     return jsonify({"error": "Not authenticated"}), 401
     
-    # Extract user ID from session if available, otherwise use default
+    # Get request data first
+    body = request.get_json() or {}
+    
+    # Extract user ID from session if available, otherwise from request body
     if "user" in session:
         user_id = session["user"]["id"]
     else:
-        user_id = "1"  # Default user for cross-domain requests until JWT implemented
-    
-    # Get request data
-    body = request.get_json() or {}
+        # Cross-domain fallback: get user ID from request body
+        user_id = body.get("user_id") or body.get("userId") or "1"
+        print(f"[API v2] Cross-domain request, using user_id from request: {user_id}")
     # Accept both "text" (V2 standard) and "message" (frontend compatibility)
     message_text = (body.get("text") or body.get("message", "")).strip()
     

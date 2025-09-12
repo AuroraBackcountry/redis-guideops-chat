@@ -73,6 +73,18 @@ export const sendMessageV2 = (roomId, messageText, options = {}) => {
     message: messageText
   };
   
+  // Add user ID for cross-domain authentication
+  try {
+    const storedUser = localStorage.getItem('guideops_user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      payload.user_id = userData.id;
+      console.log(`[API v2] Including user_id in request: ${userData.id} (${userData.username})`);
+    }
+  } catch (error) {
+    console.warn('[API v2] Could not get user_id from localStorage:', error);
+  }
+  
   // Add GPS coordinates if provided
   if (options.latitude !== undefined && options.longitude !== undefined) {
     payload.latitude = options.latitude;
