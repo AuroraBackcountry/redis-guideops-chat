@@ -81,8 +81,8 @@ export const sendMessageV2 = (roomId, messageText, options = {}) => {
   
   return axios.post(url(`/v2/rooms/${roomId}/messages`), payload)
     .then(response => {
-      console.log(`[API v2] Message sent to room ${roomId}${options.latitude ? ' with location' : ''}:`, response.data.id);
-      return response.data;
+      console.log(`[API v2] Message sent to room ${roomId}${options.latitude ? ' with location' : ''}:`, response.data.message?.id);
+      return response.data.message; // Extract the message from the API response
     })
     .catch(error => {
       console.error('[API v2] Error sending message:', error);
