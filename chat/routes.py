@@ -756,18 +756,29 @@ def stream():
         pubsub = redis_client.pubsub()
         pubsub.subscribe('MESSAGES')
         
+        print(f"[Stream] New EventSource connection established")
+        
         try:
             for message in pubsub.listen():
                 if message['type'] == 'message':
                     data = json.loads(message['data'])
+                    print(f"[Stream] Broadcasting message: {data.get('data', {}).get('id', 'unknown')}")
                     # For single server setup, send all messages
                     # if data.get('serverId') != utils.SERVER_ID:
                     yield f"data: {json.dumps(data)}\n\n"
         except GeneratorExit:
+            print(f"[Stream] EventSource connection closed")
             pubsub.unsubscribe('MESSAGES')
             pubsub.close()
     
-    return Response(event_stream(), mimetype="text/event-stream")
+    # Add CORS headers for EventSource
+    response = Response(event_stream(), mimetype="text/event-stream")
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Connection'] = 'keep-alive'
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    
+    return response
 
 @app.route("/admin")
 def admin_panel():
