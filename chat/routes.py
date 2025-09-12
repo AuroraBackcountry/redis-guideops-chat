@@ -744,35 +744,44 @@ def beautiful_registration():
     </html>
     '''
 
-@app.route("/stream")
-def stream():
-    """Server-Sent Events stream for Redis pub/sub messages"""
+@app.route("/v2/stream/<user_id>")
+def stream_v2(user_id):
+    """Redis Streams XREAD blocking for real-time messaging"""
     from flask import Response
     import json
-    import time
+    from chat.redis_streams import redis_streams
     
-    def event_stream():
-        # Subscribe to Redis pub/sub channel
-        pubsub = redis_client.pubsub()
-        pubsub.subscribe('MESSAGES')
+    def xread_event_stream():
+        print(f"[StreamV2] XREAD blocking connection established for user {user_id}")
         
-        print(f"[Stream] New EventSource connection established")
+        # Get user's rooms (for now just room 0, but could expand)
+        room_ids = ["0"]  # TODO: Get from user:{user_id}:rooms
         
         try:
-            for message in pubsub.listen():
-                if message['type'] == 'message':
-                    data = json.loads(message['data'])
-                    print(f"[Stream] Broadcasting message: {data.get('data', {}).get('id', 'unknown')}")
-                    # For single server setup, send all messages
-                    # if data.get('serverId') != utils.SERVER_ID:
-                    yield f"data: {json.dumps(data)}\n\n"
+            while True:
+                # XREAD blocking across all user's rooms
+                new_messages = redis_streams.read_blocking(user_id, room_ids, block_ms=30000, count=50)
+                
+                # Send each new message to client
+                for message in new_messages:
+                    event_data = {
+                        "type": "message",
+                        "data": message
+                    }
+                    print(f"[StreamV2] Broadcasting message: {message['id']} from user {message.get('user', {}).get('username', 'unknown')}")
+                    yield f"data: {json.dumps(event_data)}\n\n"
+                
+                # Send keepalive if no messages (XREAD timeout)
+                if not new_messages:
+                    yield f"data: {json.dumps({'type': 'keepalive', 'timestamp': int(time.time() * 1000)})}\n\n"
+                    
         except GeneratorExit:
-            print(f"[Stream] EventSource connection closed")
-            pubsub.unsubscribe('MESSAGES')
-            pubsub.close()
+            print(f"[StreamV2] XREAD connection closed for user {user_id}")
+        except Exception as e:
+            print(f"[StreamV2] Error in XREAD stream for user {user_id}: {e}")
     
-    # Add CORS headers for EventSource
-    response = Response(event_stream(), mimetype="text/event-stream")
+    # CORS headers for EventSource
+    response = Response(xread_event_stream(), mimetype="text/event-stream")
     response.headers['Cache-Control'] = 'no-cache'
     response.headers['Connection'] = 'keep-alive'
     response.headers['Access-Control-Allow-Origin'] = '*'

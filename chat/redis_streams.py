@@ -56,6 +56,21 @@ class RedisStreamsChat:
         """Get Redis Stream key for room - matches message_validator.py format"""
         return f"stream:room:{room_id}"
     
+    def get_last_seen_key(self, user_id: str, room_id: str) -> str:
+        """Get Redis key for user's last seen message ID in room"""
+        return f"last_seen:room:{room_id}:{user_id}"
+    
+    def get_last_seen(self, user_id: str, room_id: str) -> Optional[str]:
+        """Get user's last seen message ID for room"""
+        key = self.get_last_seen_key(user_id, room_id)
+        last_id = self.redis.get(key)
+        return last_id.decode('utf-8') if last_id else None
+    
+    def set_last_seen(self, user_id: str, room_id: str, message_id: str):
+        """Set user's last seen message ID for room"""
+        key = self.get_last_seen_key(user_id, room_id)
+        self.redis.set(key, message_id)
+    
     def add_message(self, room_id: str, user_id: str, message_text: str, latitude: float = None, longitude: float = None) -> Dict[str, Any]:
         """
         Add message to room stream with denormalized user data, timestamp, and GPS location
@@ -111,32 +126,14 @@ class RedisStreamsChat:
         if location_data:
             stream_fields["location"] = json.dumps(location_data)
         
-        # Add to Redis Stream with auto-generated ID
+        # Add to Redis Stream with auto-generated ID and trimming
         stream_key = self.get_room_stream_key(room_id)
-        stream_id = self.redis.xadd(stream_key, stream_fields)
-        
-        # Publish to Redis pub/sub for real-time updates
-        pub_message = {
-            "type": "message",
-            "data": {
-                "id": stream_id.decode('utf-8') if isinstance(stream_id, bytes) else stream_id,
-                "roomId": str(room_id),
-                "from": str(user_id),
-                "user": user_snapshot,
-                "text": str(message_text),
-                "message": str(message_text),
-                "tsServer": ts_server,
-                "tsIso": ts_iso,
-                "date": int(ts_server / 1000),
-                "kind": "message"
-            }
-        }
-        
-        # Add location to pub/sub message if provided
-        if location_data:
-            pub_message["data"]["location"] = location_data
-            
-        self.redis.publish("MESSAGES", json.dumps(pub_message))
+        stream_id = self.redis.xadd(
+            stream_key, 
+            stream_fields,
+            maxlen=5000,  # Keep last ~5000 messages per room
+            approximate=True  # Fast approximate trimming
+        )
         
         # Return complete message object for frontend and API
         message_obj = {
@@ -157,6 +154,90 @@ class RedisStreamsChat:
             message_obj["location"] = location_data
             
         return message_obj
+    
+    def read_blocking(self, user_id: str, room_ids: List[str], block_ms: int = 30000, count: int = 100) -> List[Dict[str, Any]]:
+        """
+        XREAD blocking across multiple rooms for real-time messaging
+        Returns new messages since user's last seen ID for each room
+        """
+        if not room_ids:
+            return []
+        
+        # Build XREAD arguments: streams and their last seen IDs
+        streams = {}
+        for room_id in room_ids:
+            stream_key = self.get_room_stream_key(room_id)
+            last_seen = self.get_last_seen(user_id, room_id)
+            # Use '$' for new messages only, or last seen ID for catch-up
+            # Validate stream ID format (must be timestamp-sequence or '$')
+            if last_seen and '-' in last_seen:
+                streams[stream_key] = last_seen
+            else:
+                streams[stream_key] = '$'  # Start from new messages
+        
+        try:
+            # XREAD BLOCK across all user's rooms
+            result = self.redis.xread(streams, count=count, block=block_ms)
+            
+            new_messages = []
+            for stream_key, messages in result:
+                stream_key_str = stream_key.decode('utf-8') if isinstance(stream_key, bytes) else stream_key
+                room_id = stream_key_str.split(':')[-1]  # Extract room_id from stream:room:{id}
+                
+                for stream_id, fields in messages:
+                    # Process message same as get_messages()
+                    stream_id_str = stream_id.decode('utf-8') if isinstance(stream_id, bytes) else stream_id
+                    
+                    # Decode fields
+                    decoded_fields = {}
+                    for key, value in fields.items():
+                        decoded_key = key.decode('utf-8') if isinstance(key, bytes) else key
+                        decoded_value = value.decode('utf-8') if isinstance(value, bytes) else value
+                        decoded_fields[decoded_key] = decoded_value
+                    
+                    # Parse user snapshot
+                    user_snapshot = {}
+                    try:
+                        user_snapshot = json.loads(decoded_fields.get("user_snapshot", "{}"))
+                    except json.JSONDecodeError:
+                        pass
+                    
+                    # Parse location data
+                    location_data = {}
+                    try:
+                        if decoded_fields.get("location"):
+                            location_data = json.loads(decoded_fields.get("location", "{}"))
+                    except json.JSONDecodeError:
+                        pass
+                    
+                    # Create message object
+                    message = {
+                        "id": stream_id_str,
+                        "roomId": decoded_fields.get("room_id", room_id),
+                        "from": decoded_fields.get("user_id", ""),
+                        "user": user_snapshot,
+                        "text": decoded_fields.get("text", ""),
+                        "message": decoded_fields.get("text", ""),
+                        "tsServer": int(decoded_fields.get("ts_server", 0)),
+                        "tsIso": decoded_fields.get("ts_iso", ""),
+                        "date": int(int(decoded_fields.get("ts_server", 0)) / 1000),
+                        "kind": decoded_fields.get("kind", "message")
+                    }
+                    
+                    # Add location data if available
+                    if location_data:
+                        message["location"] = location_data
+                    
+                    new_messages.append(message)
+                    
+                    # Update user's last seen for this room
+                    self.set_last_seen(user_id, room_id, stream_id_str)
+            
+            return new_messages
+            
+        except Exception as e:
+            print(f"[XREAD] Error in blocking read: {e}")
+            return []
     
     def get_messages(self, room_id: str, count: int = 15, before_id: Optional[str] = None) -> Dict[str, Any]:
         """
