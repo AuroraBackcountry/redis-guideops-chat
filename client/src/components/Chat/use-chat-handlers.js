@@ -1,7 +1,8 @@
 // @ts-check
 import { useCallback } from "react";
 import { useEffect, useState, useRef } from "react";
-import { addRoom, getMessages } from "../../api";
+import { addRoom } from "../../api";
+import { getMessagesV2 } from "../../api-v2";
 import { useAppState } from "../../state";
 import { parseRoomName, populateUsersFromLoadedMessages } from "../../utils";
 
@@ -39,7 +40,8 @@ const useChatHandlers = (/** @type {import("../../state").UserEntry} */ user) =>
 
   const onFetchMessages = useCallback(
     (offset = 0, prepend = false) => {
-      getMessages(roomId, offset).then(async (messages) => {
+      getMessagesV2(roomId, 15).then(async (result) => {
+        const messages = result.messages || [];
         /** We've got messages but it's possible we might not have the cached user entires which correspond to those messages */
         await populateUsersFromLoadedMessages(state.users, dispatch, messages);
 

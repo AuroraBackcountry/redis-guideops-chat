@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import { useAppState } from "../../../../../../state";
 import moment from "moment";
 import { useEffect } from "react";
-import { getMessages } from "../../../../../../api";
+import { getMessagesV2 } from "../../../../../../api-v2";
 import AvatarImage from "../AvatarImage";
 import OnlineIndicator from "../../../OnlineIndicator";
 
@@ -142,7 +142,8 @@ const useLastMessage = (
     if (lastMessage === undefined) {
       /** need to fetch it */
       if (room.messages === undefined) {
-        getMessages(room.id, 0, 1).then((messages) => {
+        getMessagesV2(room.id, 1).then((result) => {
+          const messages = result.messages || [];
           let message = null;
           if (messages.length !== 0) {
             message = messages.pop();
