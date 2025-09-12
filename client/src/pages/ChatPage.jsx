@@ -1,5 +1,5 @@
 // @ts-check
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import MessageListV2 from "../components/MessageListV2";
 import TypingArea from "../components/Chat/components/TypingArea";
@@ -282,7 +282,7 @@ export default function ChatPage({ user, onMessageSend }) {
   };
 
   // Load messages using Redis Streams v2 API with test fallback
-  const loadMessages = async (beforeId = null) => {
+  const loadMessages = useCallback(async (beforeId = null) => {
     if (!roomId) return;
     
     try {
@@ -320,7 +320,7 @@ export default function ChatPage({ user, onMessageSend }) {
         setLoading(false);
       }
     }
-  };
+  }, [roomId]); // Only depend on roomId, not on changing state setters
 
   const onLoadMoreMessages = () => {
     if (hasMore && oldestId) {
@@ -336,7 +336,7 @@ export default function ChatPage({ user, onMessageSend }) {
       // Set current room in global state for compatibility
       dispatch({ type: "set current room", payload: roomId });
     }
-  }, [roomId, dispatch]);
+  }, [roomId, loadMessages, dispatch]);
 
   // Send message using Redis Streams with test fallback
   const handleSendMessage = async (messageText) => {
