@@ -181,6 +181,10 @@ export default function ChatPage({ user, onMessageSend }) {
     // Listen for new messages via Server-Sent Events
     const eventSource = new EventSource(`https://redis-guideops-chat-production.up.railway.app/stream`);
     
+    eventSource.onopen = function(event) {
+      console.log('[ChatPage] ✅ EventSource connection established');
+    };
+    
     eventSource.onmessage = function(event) {
       try {
         const data = JSON.parse(event.data);
@@ -215,7 +219,8 @@ export default function ChatPage({ user, onMessageSend }) {
     };
     
     eventSource.onerror = function(error) {
-      console.log('[ChatPage] Real-time connection error:', error);
+      console.error('[ChatPage] ❌ EventSource connection error:', error);
+      console.log('[ChatPage] EventSource readyState:', eventSource.readyState);
     };
     
     return () => {

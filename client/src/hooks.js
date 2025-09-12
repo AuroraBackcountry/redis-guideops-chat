@@ -67,25 +67,27 @@ const useSocket = (user, dispatch) => {
       }
     } else {
 
-      if (eventSourceRef.current === null) {
-        eventSourceRef.current = getEventSource();
-        /** Handle non socket.io messages */
-        eventSourceRef.current.onmessage = function (e) {
-          const { type, data } = JSON.parse(e.data);
-          switch (type) {
-            case "user.connected": updateUser(data, dispatch, `${data.username} connected`);
-              break;
-            case "user.disconnected": updateUser(data, dispatch, `${data.username} left`);
-              break;
-            case "show.room": onShowRoom(data, user.username, dispatch);
-              break;
-            case 'message': onMessage(data, dispatch);
-              break;
-            default:
-              break;
-          }
-        };
-      }
+      // DISABLED: EventSource now handled by ChatPage.jsx for V2 Redis Streams
+      // The old EventSource was conflicting with the new V2 implementation
+      // if (eventSourceRef.current === null) {
+      //   eventSourceRef.current = getEventSource();
+      //   /** Handle non socket.io messages */
+      //   eventSourceRef.current.onmessage = function (e) {
+      //     const { type, data } = JSON.parse(e.data);
+      //     switch (type) {
+      //       case "user.connected": updateUser(data, dispatch, `${data.username} connected`);
+      //         break;
+      //       case "user.disconnected": updateUser(data, dispatch, `${data.username} left`);
+      //         break;
+      //       case "show.room": onShowRoom(data, user.username, dispatch);
+      //         break;
+      //       case 'message': onMessage(data, dispatch);
+      //         break;
+      //       default:
+      //         break;
+      //     }
+      //   };
+      // }
 
       if (socket !== null) {
         socket.connect();
