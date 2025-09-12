@@ -220,7 +220,7 @@ const useAppHandlers = () => {
         dispatch({ type: "set current room", payload: "0" });
       });
     }
-  }, [dispatch, state.rooms, user]);
+  }, [dispatch, user]); // Removed state.rooms to prevent infinite loop
 
   const onMessageSend = useCallback(
     (message, roomId) => {
