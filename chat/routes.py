@@ -785,8 +785,8 @@ def stream_v2(user_id):
         
         try:
             while True:
-                # XREAD blocking across all user's rooms
-                new_messages = redis_streams.read_blocking(user_id, room_ids, block_ms=30000, count=50)
+                # XREAD blocking across all user's rooms (15s timeout for heartbeats)
+                new_messages = redis_streams.read_blocking(user_id, room_ids, block_ms=15000, count=50)
                 
                 # Send each new message to client
                 for message in new_messages:
@@ -797,9 +797,9 @@ def stream_v2(user_id):
                     print(f"[StreamV2] Broadcasting message: {message['id']} from user {message.get('user', {}).get('username', 'unknown')}")
                     yield f"data: {json.dumps(event_data)}\n\n"
                 
-                # Send keepalive if no messages (XREAD timeout)
-                if not new_messages:
-                    yield f"data: {json.dumps({'type': 'keepalive', 'timestamp': int(time.time() * 1000)})}\n\n"
+                # Send heartbeat every 15 seconds (XREAD timeout)
+                # This keeps connection alive through proxies and CDNs
+                yield f": heartbeat {int(time.time())}\n\n"
                     
         except GeneratorExit:
             print(f"[StreamV2] XREAD connection closed for user {user_id}")

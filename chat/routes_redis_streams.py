@@ -105,11 +105,18 @@ def acknowledge_messages():
         return jsonify({"ok": False, "error": "No acknowledgments provided"}), 400
     
     try:
-        # Update cursors for each acknowledged room
+        # Update cursors for each acknowledged room (monotonic validation)
         for room_id, last_message_id in acks.items():
             if last_message_id and '-' in str(last_message_id):  # Validate stream ID format
-                redis_streams.set_last_seen(user_id, room_id, str(last_message_id))
-                print(f"[ACK] User {user_id} acknowledged room {room_id} up to {last_message_id}")
+                # Get current cursor for monotonic check
+                current_cursor = redis_streams.get_last_seen(user_id, room_id)
+                
+                # Only advance if new ID is greater than current (monotonic)
+                if not current_cursor or str(last_message_id) > current_cursor:
+                    redis_streams.set_last_seen(user_id, room_id, str(last_message_id))
+                    print(f"[ACK] User {user_id} acknowledged room {room_id} up to {last_message_id}")
+                else:
+                    print(f"[ACK] User {user_id} ACK ignored (non-monotonic): {last_message_id} <= {current_cursor}")
         
         return jsonify({"ok": True, "acknowledged": len(acks)}), 200
         

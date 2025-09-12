@@ -253,6 +253,25 @@ class RedisStreamsChat:
             return result.get('messages', [])
         
         try:
+            # Check if stream exists and get boundaries
+            stream_info = self.redis.xinfo_stream(stream_key)
+            first_entry_id = stream_info.get('first-entry')[0].decode('utf-8') if stream_info.get('first-entry') else None
+            
+            # Check if cursor is older than stream's first ID (trimmed)
+            if first_entry_id and last_seen < first_entry_id:
+                print(f"[Catchup] Cursor {last_seen} older than first ID {first_entry_id} - history trimmed")
+                # Return special marker for UI to show "history unavailable"
+                return [{
+                    "id": "system-history-trimmed",
+                    "roomId": room_id,
+                    "from": "system",
+                    "user": {"username": "System"},
+                    "text": "Some older messages are no longer available due to retention policy",
+                    "kind": "system",
+                    "tsServer": int(time.time() * 1000),
+                    "date": int(time.time())
+                }]
+            
             # XRANGE from last_seen to current ('+')
             messages = self.redis.xrange(stream_key, f"({last_seen}", "+", count=max_count)
             
