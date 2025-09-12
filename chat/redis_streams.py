@@ -116,7 +116,6 @@ class RedisStreamsChat:
         stream_id = self.redis.xadd(stream_key, stream_fields)
         
         # Publish to Redis pub/sub for real-time updates
-        import json
         pub_message = {
             "type": "message",
             "data": {
