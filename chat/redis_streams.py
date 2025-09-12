@@ -53,8 +53,8 @@ class RedisStreamsChat:
         self.redis = redis_client
     
     def get_room_stream_key(self, room_id: str) -> str:
-        """Get Redis Stream key for room with cluster hash tag"""
-        return f"room:{{{room_id}}}:messages"
+        """Get Redis Stream key for room - matches message_validator.py format"""
+        return f"stream:room:{room_id}"
     
     def add_message(self, room_id: str, user_id: str, message_text: str, latitude: float = None, longitude: float = None) -> Dict[str, Any]:
         """
