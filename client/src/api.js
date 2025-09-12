@@ -172,7 +172,8 @@ export const getRooms = async (userId) => {
   return axios.get(url(`/rooms/${userId}`)).then(x => x.data);
 };
 
-export const getEventSource = () => new EventSource(url('/stream'));
+// REMOVED: getEventSource - replaced with V2 XREAD system in ChatPage.jsx
+// export const getEventSource = () => new EventSource(url('/stream'));
 
 // ============================================================================
 // ENHANCED REDIS API FUNCTIONS

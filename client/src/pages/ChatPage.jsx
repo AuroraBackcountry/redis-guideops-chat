@@ -100,12 +100,40 @@ export default function ChatPage({ user, onMessageSend }) {
   const [message, setMessage] = useState("");
   const messageListElement = React.useRef(null);
   
+  // Client acknowledgment state
+  const [pendingAcks, setPendingAcks] = useState({});  // {room_id: latest_message_id}
+  
   // GPS location state (automatic, transparent)
   const [userLocation, setUserLocation] = useState(null);
   const [locationPermission, setLocationPermission] = useState('unknown'); // 'granted', 'denied', 'unknown'
   
   // Get basic state for room and user info (keep existing for compatibility)
   const { rooms, users, currentRoom, dispatch } = useChatHandlers(user);
+  
+  // Client acknowledgment function
+  const acknowledgeMessages = useCallback(async (acks) => {
+    if (!acks || Object.keys(acks).length === 0) return;
+    
+    try {
+      const response = await fetch('https://redis-guideops-chat-production.up.railway.app/v2/ack', {
+        method: 'POST',
+        credentials: 'include',  // Send cookies for authentication
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          acks,
+          user_id: user?.id  // Fallback for cross-domain
+        }),
+      });
+      
+      if (response.ok) {
+        console.log('[ChatPage] ✅ Acknowledged messages:', acks);
+      } else {
+        console.warn('[ChatPage] ⚠️ ACK failed:', response.status);
+      }
+    } catch (error) {
+      console.error('[ChatPage] ❌ ACK error:', error);
+    }
+  }, [user]);
   
   // Request GPS location permission and capture location (automatic, transparent)
   useEffect(() => {
@@ -172,14 +200,17 @@ export default function ChatPage({ user, onMessageSend }) {
     );
   }, [user]);
   
-  // Add real-time message listener for Redis Streams v2
+  // Add real-time message listener for Redis Streams v2 with XREAD blocking
   useEffect(() => {
     if (!user) return;
     
-    console.log('[ChatPage] Setting up real-time message listener for Redis Streams');
+    console.log('[ChatPage] Setting up XREAD real-time listener for Redis Streams v2');
     
-    // Listen for new messages via Server-Sent Events
-    const eventSource = new EventSource(`https://redis-guideops-chat-production.up.railway.app/stream`);
+    // Listen for new messages via Server-Sent Events with proper credentials
+    const eventSource = new EventSource(
+      `https://redis-guideops-chat-production.up.railway.app/v2/stream/${user.id}`,
+      { withCredentials: true }
+    );
     
     eventSource.onopen = function(event) {
       console.log('[ChatPage] ✅ EventSource connection established');
@@ -189,6 +220,16 @@ export default function ChatPage({ user, onMessageSend }) {
       try {
         const data = JSON.parse(event.data);
         console.log('[ChatPage] Real-time event received:', data);
+        
+        if (data.type === 'backlog_end') {
+          console.log('[ChatPage] ✅ Catch-up complete, now receiving real-time messages');
+          return;
+        }
+        
+        if (data.type === 'keepalive') {
+          console.log('[ChatPage] 💓 Keepalive received');
+          return;
+        }
         
         if (data.type === 'message' && data.data) {
           const message = data.data;
@@ -204,6 +245,12 @@ export default function ChatPage({ user, onMessageSend }) {
               }
               return [...prev, message];
             });
+            
+            // Track for acknowledgment
+            setPendingAcks(prev => ({
+              ...prev,
+              [message.roomId]: message.id
+            }));
             
             // Scroll to bottom for new messages
             if (messageListElement.current) {
@@ -228,6 +275,21 @@ export default function ChatPage({ user, onMessageSend }) {
       eventSource.close();
     };
   }, [user, roomId]); // Don't include messages to avoid EventSource recreation
+  
+  // Periodic acknowledgment sender (every 5 seconds)
+  useEffect(() => {
+    if (!user || Object.keys(pendingAcks).length === 0) return;
+    
+    const ackInterval = setInterval(() => {
+      if (Object.keys(pendingAcks).length > 0) {
+        console.log('[ChatPage] Sending pending acknowledgments:', pendingAcks);
+        acknowledgeMessages(pendingAcks);
+        setPendingAcks({}); // Clear after sending
+      }
+    }, 5000); // ACK every 5 seconds
+    
+    return () => clearInterval(ackInterval);
+  }, [pendingAcks, acknowledgeMessages, user]);
 
   // Add localStorage listener for cross-tab message simulation
   useEffect(() => {

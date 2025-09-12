@@ -1,6 +1,6 @@
 // @ts-check
 import { useEffect, useRef, useState } from "react";
-import { getEventSource, getMe, login, logOut } from "./api";
+import { getMe, login, logOut } from "./api";
 import axios from "axios";
 import io from "socket.io-client";
 import { parseRoomName } from "./utils";
