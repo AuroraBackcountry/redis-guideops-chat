@@ -115,6 +115,30 @@ class RedisStreamsChat:
         stream_key = self.get_room_stream_key(room_id)
         stream_id = self.redis.xadd(stream_key, stream_fields)
         
+        # Publish to Redis pub/sub for real-time updates
+        import json
+        pub_message = {
+            "type": "message",
+            "data": {
+                "id": stream_id.decode('utf-8') if isinstance(stream_id, bytes) else stream_id,
+                "roomId": str(room_id),
+                "from": str(user_id),
+                "user": user_snapshot,
+                "text": str(message_text),
+                "message": str(message_text),
+                "tsServer": ts_server,
+                "tsIso": ts_iso,
+                "date": int(ts_server / 1000),
+                "kind": "message"
+            }
+        }
+        
+        # Add location to pub/sub message if provided
+        if location_data:
+            pub_message["data"]["location"] = location_data
+            
+        self.redis.publish("MESSAGES", json.dumps(pub_message))
+        
         # Return complete message object for frontend and API
         message_obj = {
             "id": stream_id.decode('utf-8') if isinstance(stream_id, bytes) else stream_id,
