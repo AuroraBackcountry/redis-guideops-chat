@@ -43,17 +43,28 @@ export const getMessagesV2 = (roomId, count = 15, beforeId = null) => {
 };
 
 /**
- * Send message using Redis Streams  
+ * Send message using Redis Streams with optional GPS location
  * @param {string} roomId - Room identifier
  * @param {string} messageText - Message content
+ * @param {Object} options - Optional parameters
+ * @param {number} options.latitude - GPS latitude
+ * @param {number} options.longitude - GPS longitude
  * @returns {Promise<Object>} Complete message object with stream ID
  */
-export const sendMessageV2 = (roomId, messageText) => {
-  return axios.post(url(`/v2/rooms/${roomId}/messages`), {
+export const sendMessageV2 = (roomId, messageText, options = {}) => {
+  const payload = {
     message: messageText
-  })
+  };
+  
+  // Add GPS coordinates if provided
+  if (options.latitude !== undefined && options.longitude !== undefined) {
+    payload.latitude = options.latitude;
+    payload.longitude = options.longitude;
+  }
+  
+  return axios.post(url(`/v2/rooms/${roomId}/messages`), payload)
     .then(response => {
-      console.log(`[API v2] Message sent to room ${roomId}:`, response.data.id);
+      console.log(`[API v2] Message sent to room ${roomId}${options.latitude ? ' with location' : ''}:`, response.data.id);
       return response.data;
     })
     .catch(error => {

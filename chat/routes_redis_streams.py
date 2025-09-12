@@ -44,13 +44,28 @@ def send_message_v2(room_id):
     
     data = request.get_json()
     message_text = data.get("message", "").strip()
+    latitude = data.get("latitude")  # Optional GPS latitude
+    longitude = data.get("longitude")  # Optional GPS longitude
     
     if not message_text:
         return jsonify({"error": "Message cannot be empty"}), 400
     
+    # Validate GPS coordinates if provided
+    if (latitude is not None or longitude is not None):
+        if latitude is None or longitude is None:
+            return jsonify({"error": "Both latitude and longitude required for location"}), 400
+        try:
+            latitude = float(latitude)
+            longitude = float(longitude)
+            # Basic validation for valid coordinate ranges
+            if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+                return jsonify({"error": "Invalid GPS coordinates"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid GPS coordinate format"}), 400
+    
     try:
-        # Add message to Redis Stream
-        message = redis_streams.add_message(room_id, user_id, message_text)
+        # Add message to Redis Stream with optional location
+        message = redis_streams.add_message(room_id, user_id, message_text, latitude, longitude)
         
         # Broadcast via Socket.IO/SSE (existing pub/sub system)
         utils.redis_client.publish("MESSAGES", json.dumps({
@@ -162,6 +177,43 @@ def debug_session():
             "error": str(e),
             "has_session": bool(session)
         }), 500
+
+@app.route("/v2/rooms/<room_id>/messages/location", methods=["GET"])
+def get_messages_by_location(room_id):
+    """Get messages with location data for API use (location-based analytics)"""
+    if "user" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    count = int(request.args.get("count", 50))
+    before_id = request.args.get("before")
+    
+    try:
+        # Get messages from Redis Streams
+        result = redis_streams.get_messages(room_id, count, before_id)
+        
+        # Filter messages that have location data
+        location_messages = []
+        for msg in result['messages']:
+            if 'location' in msg and msg['location']:
+                location_messages.append({
+                    'id': msg['id'],
+                    'user_id': msg['from'],
+                    'username': msg.get('user', {}).get('username', 'Unknown'),
+                    'text': msg['text'],
+                    'location': msg['location'],
+                    'tsServer': msg['tsServer'],
+                    'tsIso': msg.get('tsIso', ''),
+                    'roomId': msg['roomId']
+                })
+        
+        return jsonify({
+            'messages': location_messages,
+            'total_with_location': len(location_messages),
+            'total_messages': len(result['messages']),
+            'location_percentage': round(len(location_messages) / len(result['messages']) * 100, 1) if result['messages'] else 0
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to get location messages: {str(e)}"}), 500
 
 @app.route("/v2/system/status")
 def redis_streams_status():

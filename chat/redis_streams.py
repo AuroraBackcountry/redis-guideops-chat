@@ -56,10 +56,17 @@ class RedisStreamsChat:
         """Get Redis Stream key for room with cluster hash tag"""
         return f"room:{{{room_id}}}:messages"
     
-    def add_message(self, room_id: str, user_id: str, message_text: str) -> Dict[str, Any]:
+    def add_message(self, room_id: str, user_id: str, message_text: str, latitude: float = None, longitude: float = None) -> Dict[str, Any]:
         """
-        Add message to room stream with denormalized user data
+        Add message to room stream with denormalized user data, timestamp, and GPS location
         Returns the complete message object with Redis Stream ID
+        
+        Args:
+            room_id: Room identifier
+            user_id: User identifier  
+            message_text: Message content
+            latitude: GPS latitude (optional)
+            longitude: GPS longitude (optional)
         """
         # Get user snapshot for message
         user_data = get_user_data(user_id)
@@ -75,8 +82,18 @@ class RedisStreamsChat:
             "role": user_data.get("role", "user")
         }
         
-        # Server timestamp (authoritative)
+        # Enhanced timestamps (authoritative)
         ts_server = int(time.time() * 1000)  # milliseconds
+        ts_iso = time.strftime('%Y-%m-%dT%H:%M:%S.%fZ', time.gmtime())  # ISO 8601 UTC
+        
+        # GPS location data (optional)
+        location_data = {}
+        if latitude is not None and longitude is not None:
+            location_data = {
+                "latitude": float(latitude),
+                "longitude": float(longitude),
+                "timestamp": ts_iso  # When location was captured
+            }
         
         # Message fields for Redis Stream
         stream_fields = {
@@ -84,17 +101,22 @@ class RedisStreamsChat:
             "user_id": str(user_id),
             "text": str(message_text),
             "ts_server": str(ts_server),
+            "ts_iso": ts_iso,
             "kind": "message",
             # Denormalized user snapshot (JSON string)
             "user_snapshot": json.dumps(user_snapshot)
         }
         
+        # Add location data if provided
+        if location_data:
+            stream_fields["location"] = json.dumps(location_data)
+        
         # Add to Redis Stream with auto-generated ID
         stream_key = self.get_room_stream_key(room_id)
         stream_id = self.redis.xadd(stream_key, stream_fields)
         
-        # Return complete message object for frontend
-        return {
+        # Return complete message object for frontend and API
+        message_obj = {
             "id": stream_id.decode('utf-8') if isinstance(stream_id, bytes) else stream_id,
             "roomId": str(room_id),
             "from": str(user_id),
@@ -102,9 +124,16 @@ class RedisStreamsChat:
             "text": str(message_text),
             "message": str(message_text),  # Backward compatibility
             "tsServer": ts_server,
+            "tsIso": ts_iso,  # Enhanced ISO 8601 timestamp
             "date": int(ts_server / 1000),  # Backward compatibility (seconds)
             "kind": "message"
         }
+        
+        # Add location data to response if provided
+        if location_data:
+            message_obj["location"] = location_data
+            
+        return message_obj
     
     def get_messages(self, room_id: str, count: int = 15, before_id: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -159,7 +188,15 @@ class RedisStreamsChat:
             except json.JSONDecodeError:
                 pass
             
-            # Create message object
+            # Parse location data
+            location_data = {}
+            try:
+                if decoded_fields.get("location"):
+                    location_data = json.loads(decoded_fields.get("location", "{}"))
+            except json.JSONDecodeError:
+                pass
+            
+            # Create message object with enhanced data
             message = {
                 "id": stream_id,
                 "roomId": decoded_fields.get("room_id", room_id),
@@ -168,9 +205,14 @@ class RedisStreamsChat:
                 "text": decoded_fields.get("text", ""),
                 "message": decoded_fields.get("text", ""),  # Backward compatibility
                 "tsServer": int(decoded_fields.get("ts_server", 0)),
+                "tsIso": decoded_fields.get("ts_iso", ""),  # Enhanced ISO timestamp
                 "date": int(int(decoded_fields.get("ts_server", 0)) / 1000),  # Backward compatibility
                 "kind": decoded_fields.get("kind", "message")
             }
+            
+            # Add location data if available
+            if location_data:
+                message["location"] = location_data
             
             formatted_messages.append(message)
             

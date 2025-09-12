@@ -103,14 +103,16 @@ def io_on_message_v2(message):
     user_id = session["user"]["id"]
     room_id = message["roomId"]
     message_text = message.get("message", "").strip()
+    latitude = message.get("latitude")  # Optional GPS coordinates
+    longitude = message.get("longitude")
     
     if not message_text:
         print("Empty v2 message, ignoring")
         return
     
     try:
-        # Add message using Redis Streams
-        stream_message = redis_streams.add_message(room_id, user_id, message_text)
+        # Add message using Redis Streams with optional location
+        stream_message = redis_streams.add_message(room_id, user_id, message_text, latitude, longitude)
         
         # Update user online status
         utils.redis_client.sadd("online_users", user_id)
