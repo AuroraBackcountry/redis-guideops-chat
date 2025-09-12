@@ -17,17 +17,11 @@ print("[DEBUG] Flask configured for API-only mode - static files served by Verce
 app = Flask(__name__)
 app.config.from_object(get_config())
 
-# Configure CORS for Vercel frontend
+# Configure CORS for Vercel frontend - permissive for V2 testing
 CORS(app, 
     supports_credentials=True,
-    origins=[
-        "http://localhost:3000",  # Local development
-        "https://guideops-chat-frontend.vercel.app",  # Vercel production URL
-        "https://guideops-chat-frontend-*.vercel.app",  # Vercel preview deployments
-        "https://*.vercel.app",   # Other Vercel domains
-        "https://vercel.app",     # Vercel custom domains
-    ],
-    allow_headers=["Content-Type", "Authorization"],
+    origins="*",  # Temporary: allow all origins for V2 testing
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 )
 
