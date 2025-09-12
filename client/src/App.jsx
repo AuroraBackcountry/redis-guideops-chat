@@ -206,19 +206,25 @@ const useAppHandlers = () => {
         const updatedCache = { ...cachedUsers, ...users };
         localStorage.setItem('guideops_user_cache', JSON.stringify(updatedCache));
       });
-      /** Then get rooms. */
-      getRooms(user.id).then((rooms) => {
-        const payload = [];
-        rooms.forEach(({ id, names }) => {
-          payload.push({ id, name: parseRoomName(names, user.username) });
-        });
-        /** Here we also can populate the state with default chat rooms */
-        dispatch({
-          type: "set rooms",
-          payload,
-        });
-        dispatch({ type: "set current room", payload: "0" });
+      /** TEMPORARILY DISABLED - was causing infinite loop */
+      // getRooms(user.id).then((rooms) => {
+      //   const payload = [];
+      //   rooms.forEach(({ id, names }) => {
+      //     payload.push({ id, name: parseRoomName(names, user.username) });
+      //   });
+      //   dispatch({
+      //     type: "set rooms",
+      //     payload,
+      //   });
+      //   dispatch({ type: "set current room", payload: "0" });
+      // });
+      
+      // Hardcode General room for now to stop infinite loop
+      dispatch({
+        type: "set rooms",
+        payload: [{ id: "0", name: "General" }],
       });
+      dispatch({ type: "set current room", payload: "0" });
     }
   }, [dispatch, user]); // Removed state.rooms to prevent infinite loop
 
