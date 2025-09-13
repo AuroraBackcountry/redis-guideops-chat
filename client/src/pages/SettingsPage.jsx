@@ -114,6 +114,47 @@ export default function SettingsPage({ user, onLogOut }) {
           </div>
         </div>
 
+        {/* Admin Section - Only for admins */}
+        {user?.role === 'super_admin' || user?.role === 'admin' ? (
+          <div className="settings-section mb-4">
+            <h6 className="text-muted mb-3">ADMINISTRATION</h6>
+            <div className="settings-items">
+              
+              <div className="setting-item d-flex align-items-center justify-content-between" style={{
+                padding: '12px 0',
+                borderBottom: '1px solid #f0f0f0'
+              }}>
+                <div>
+                  <div style={{ fontWeight: '500' }}>Admin Panel</div>
+                  <small className="text-muted">Manage users, channels, and system settings</small>
+                </div>
+                <button 
+                  className="btn btn-primary btn-sm"
+                  onClick={() => window.open('https://redis-guideops-chat-production.up.railway.app/admin', '_blank')}
+                >
+                  Open
+                </button>
+              </div>
+
+              <div className="setting-item d-flex align-items-center justify-content-between" style={{
+                padding: '12px 0',
+                borderBottom: '1px solid #f0f0f0'
+              }}>
+                <div>
+                  <div style={{ fontWeight: '500' }}>System Status</div>
+                  <small className="text-muted">View server health and Redis statistics</small>
+                </div>
+                <button 
+                  className="btn btn-outline-primary btn-sm"
+                  onClick={() => window.open('https://redis-guideops-chat-production.up.railway.app/', '_blank')}
+                >
+                  View
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {/* About Section */}
         <div className="settings-section mb-4">
           <h6 className="text-muted mb-3">ABOUT</h6>
