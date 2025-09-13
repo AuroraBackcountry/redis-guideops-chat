@@ -767,14 +767,23 @@ def stream_v2(user_id):
         # Get user's rooms (for now just room 0, but could expand)
         room_ids = ["0"]  # TODO: Get from user:{user_id}:rooms
         
-        # Initial catch-up: send any missed messages since last seen
+        # Initialize read cursors (in-memory) from ACK cursors (persisted)
+        read_cursors = {}  # {room_id: current_read_position}
+        for room_id in room_ids:
+            ack_cursor = redis_streams.get_last_seen(user_id, room_id)
+            read_cursors[room_id] = ack_cursor or '$'
+            print(f"[StreamV2] Room {room_id} read cursor initialized: {read_cursors[room_id]}")
+        
+        # Initial catch-up: send any missed messages since last ACK
         try:
             for room_id in room_ids:
                 catchup_messages = redis_streams.get_catchup_messages(user_id, room_id, max_count=50)
                 for message in catchup_messages:
                     event_data = {"type": "message", "data": message}
-                    print(f"[StreamV2] Catch-up message: {message['id']} from user {message.get('user', {}).get('username', 'unknown')}")
+                    print(f"[StreamV2] Catch-up message: {message['id']}")
                     yield f"data: {json.dumps(event_data)}\n\n"
+                    # Advance read cursor for this room
+                    read_cursors[room_id] = message['id']
             
             # Send backlog_end marker
             yield f"data: {json.dumps({'type': 'backlog_end', 'timestamp': int(time.time() * 1000)})}\n\n"
@@ -785,21 +794,63 @@ def stream_v2(user_id):
         
         try:
             while True:
-                # XREAD blocking across all user's rooms (15s timeout for heartbeats)
-                new_messages = redis_streams.read_blocking(user_id, room_ids, block_ms=15000, count=50)
+                # Build XREAD with in-memory read cursors (NOT persisted ACK cursors)
+                streams = {}
+                for room_id in room_ids:
+                    stream_key = f"stream:room:{room_id}"
+                    streams[stream_key] = read_cursors[room_id]
                 
-                # Send each new message to client
-                for message in new_messages:
-                    event_data = {
-                        "type": "message",
-                        "data": message
-                    }
-                    print(f"[StreamV2] Broadcasting message: {message['id']} from user {message.get('user', {}).get('username', 'unknown')}")
-                    yield f"data: {json.dumps(event_data)}\n\n"
+                print(f"[StreamV2] XREAD input cursors: {read_cursors}")
                 
-                # Send heartbeat every 15 seconds (XREAD timeout)
-                # This keeps connection alive through proxies and CDNs
-                yield f": heartbeat {int(time.time())}\n\n"
+                # XREAD blocking with current read positions
+                result = redis_streams.redis.xread(streams, count=50, block=15000)
+                
+                if result:
+                    delivered_count = 0
+                    max_ids = {}
+                    
+                    for stream_key, messages in result:
+                        stream_key_str = stream_key.decode('utf-8') if isinstance(stream_key, bytes) else stream_key
+                        room_id = stream_key_str.split(':')[-1]
+                        
+                        for stream_id, fields in messages:
+                            stream_id_str = stream_id.decode('utf-8') if isinstance(stream_id, bytes) else stream_id
+                            
+                            # Process message (simplified)
+                            decoded_fields = {k.decode('utf-8'): v.decode('utf-8') for k, v in fields.items()}
+                            user_snapshot = {}
+                            try:
+                                user_snapshot = json.loads(decoded_fields.get("user_snapshot", "{}"))
+                            except:
+                                pass
+                            
+                            message = {
+                                "id": stream_id_str,
+                                "roomId": room_id,
+                                "from": decoded_fields.get("user_id", ""),
+                                "user": user_snapshot,
+                                "text": decoded_fields.get("text", ""),
+                                "message": decoded_fields.get("text", ""),
+                                "tsServer": int(decoded_fields.get("ts_server", 0)),
+                                "date": int(int(decoded_fields.get("ts_server", 0)) / 1000),
+                                "kind": "message"
+                            }
+                            
+                            event_data = {"type": "message", "data": message}
+                            print(f"[StreamV2] New message: {stream_id_str}")
+                            yield f"data: {json.dumps(event_data)}\n\n"
+                            
+                            delivered_count += 1
+                            max_ids[room_id] = stream_id_str
+                    
+                    # Advance read cursors to max delivered IDs (in-memory only)
+                    for room_id, max_id in max_ids.items():
+                        read_cursors[room_id] = max_id
+                    
+                    print(f"[StreamV2] Delivered {delivered_count} messages, read cursors now: {read_cursors}")
+                else:
+                    # XREAD timeout - send heartbeat
+                    yield f": heartbeat {int(time.time())}\n\n"
                     
         except GeneratorExit:
             print(f"[StreamV2] XREAD connection closed for user {user_id}")
