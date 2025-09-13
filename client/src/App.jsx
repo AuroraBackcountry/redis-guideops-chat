@@ -184,7 +184,7 @@ const useAppHandlers = () => {
   /** Populate default rooms when user is not null */
   useEffect(() => {
     /** @ts-ignore */
-    if (Object.values(state.rooms).length === 0 && user !== null) {
+    if (user !== null) {
       /** Load cached user data first, then fetch fresh data */
       // Load cached users immediately (no API delay)
       const cachedUsers = JSON.parse(localStorage.getItem('guideops_user_cache') || '{}');
@@ -206,27 +206,18 @@ const useAppHandlers = () => {
         const updatedCache = { ...cachedUsers, ...users };
         localStorage.setItem('guideops_user_cache', JSON.stringify(updatedCache));
       });
-      /** TEMPORARILY DISABLED - was causing infinite loop */
-      // getRooms(user.id).then((rooms) => {
-      //   const payload = [];
-      //   rooms.forEach(({ id, names }) => {
-      //     payload.push({ id, name: parseRoomName(names, user.username) });
-      //   });
-      //   dispatch({
-      //     type: "set rooms",
-      //     payload,
-      //   });
-      //   dispatch({ type: "set current room", payload: "0" });
-      // });
       
-      // Hardcode General room for now to stop infinite loop
-      dispatch({
-        type: "set rooms",
-        payload: [{ id: "0", name: "General" }],
-      });
-      dispatch({ type: "set current room", payload: "0" });
+      // Initialize with General room only if no rooms exist
+      // This preserves created channels and prevents overwriting
+      if (Object.values(state.rooms).length === 0) {
+        dispatch({
+          type: "add room",
+          payload: { id: "0", name: "General" }
+        });
+        dispatch({ type: "set current room", payload: "0" });
+      }
     }
-  }, [dispatch, user]); // Removed state.rooms to prevent infinite loop
+  }, [dispatch, user]); // Don't include state.rooms to prevent infinite loop
 
   const onMessageSend = useCallback(
     (message, roomId) => {
