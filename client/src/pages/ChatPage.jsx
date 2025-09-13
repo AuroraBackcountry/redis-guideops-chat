@@ -5,6 +5,7 @@ import MessageListV2 from "../components/MessageListV2";
 import TypingArea from "../components/Chat/components/TypingArea";
 import useChatHandlers from "../components/Chat/use-chat-handlers";
 import { getMessagesV2, sendMessageV2 } from "../api-v2";
+import { useSocket } from "../hooks";
 // Removed api-v2-test import - file doesn't exist
 
 /**
@@ -110,6 +111,9 @@ export default function ChatPage({ user, onMessageSend }) {
   // Get basic state for room and user info (keep existing for compatibility)
   const { rooms, users, currentRoom, dispatch } = useChatHandlers(user);
   
+  // Get Socket.IO connection from hooks
+  const [socket, socketConnected] = useSocket(user, dispatch);
+  
   // Client acknowledgment function
   const acknowledgeMessages = useCallback(async (acks) => {
     if (!acks || Object.keys(acks).length === 0) return;
@@ -206,10 +210,7 @@ export default function ChatPage({ user, onMessageSend }) {
     
     console.log('[ChatPage] Setting up Socket.IO real-time listener for V2');
     
-    // Get Socket.IO instance from hooks
-    const socket = window.socket; // Assuming socket is available globally
-    
-    if (socket) {
+    if (socket && socketConnected) {
       // Join current room for real-time updates
       socket.emit('join', roomId);
       console.log(`[ChatPage] Joined room ${roomId} via Socket.IO`);
@@ -252,9 +253,9 @@ export default function ChatPage({ user, onMessageSend }) {
         socket.off('message', handleMessage);
       };
     } else {
-      console.warn('[ChatPage] Socket.IO not available, falling back to polling');
+      console.warn(`[ChatPage] Socket.IO not ready - socket: ${!!socket}, connected: ${socketConnected}`);
     }
-  }, [user, roomId, messages]); // Include messages for real-time updates
+  }, [user, roomId, socket, socketConnected]); // Depend on socket connection state
   
   // Periodic acknowledgment sender (every 5 seconds)
   useEffect(() => {
