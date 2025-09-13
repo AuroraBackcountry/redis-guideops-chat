@@ -126,6 +126,17 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
       try {
         const newChannel = await createChannel(name.trim(), 'public', `Channel created by ${user.username}`);
         console.log('✅ Created channel:', newChannel);
+        
+        // Add new channel to state so it appears in sidebar
+        dispatch({ 
+          type: "add room", 
+          payload: { 
+            id: newChannel.id, 
+            name: newChannel.name,
+            connected: false  // Will be connected when Socket.IO joins
+          } 
+        });
+        
         alert(`Channel "${name}" created successfully!`);
         // Navigate to new channel
         handleRoomSelect(newChannel.id);
