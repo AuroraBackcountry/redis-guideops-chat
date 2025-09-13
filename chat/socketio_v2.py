@@ -43,7 +43,8 @@ def io_disconnect():
 def io_join_room(room_id):
     """V2 Socket.IO room join handler"""
     print(f"[Socket.IO V2] Client {request.sid} joining room {room_id}")
-    join_room(room_id)
+    join_room(str(room_id))
+    emit("room_joined", {"room_id": room_id, "status": "success"})
 
 
 def io_on_message(message):
