@@ -181,10 +181,23 @@ export const getRooms = async (userId) => {
 
 /** Create a new channel */
 export const createChannel = async (name, type = 'public', description = '') => {
+  // Get user ID for cross-domain requests
+  let user_id = null;
+  try {
+    const storedUser = localStorage.getItem('guideops_user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      user_id = userData.id;
+    }
+  } catch (error) {
+    console.warn('[API] Could not get user_id for channel creation:', error);
+  }
+  
   return axios.post(url('/api/channels'), {
     name,
     type,
-    description
+    description,
+    user_id  // Include user_id for cross-domain auth
   }).then(x => x.data);
 };
 
