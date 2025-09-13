@@ -748,6 +748,95 @@ def beautiful_registration():
   # EventSource had blocking issues and CORS complexity
   # Socket.IO provides better reconnection, mobile support, and simpler architecture
 
+@app.route("/api/channels", methods=["POST"])
+def create_channel():
+    """Create a new channel/room"""
+    # Check authentication
+    if "user" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    user_id = session["user"]["id"]
+    user_role = session["user"].get("role", "user")
+    
+    # Only admins can create channels for now
+    if user_role not in ["super_admin", "admin"]:
+        return jsonify({"error": "Admin access required to create channels"}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request body required"}), 400
+    
+    name = data.get("name", "").strip()
+    channel_type = data.get("type", "public")
+    description = data.get("description", "").strip()
+    
+    if not name:
+        return jsonify({"error": "Channel name is required"}), 400
+    
+    if len(name) < 2 or len(name) > 50:
+        return jsonify({"error": "Channel name must be 2-50 characters"}), 400
+    
+    try:
+        # Generate new room ID
+        room_id = str(redis_client.incr("total_rooms"))
+        
+        # Store room metadata
+        room_key = f"room:{room_id}"
+        room_data = {
+            "id": room_id,
+            "name": name,
+            "type": channel_type,
+            "description": description,
+            "created_by": user_id,
+            "created_at": str(time.time()),
+            "member_count": "1"
+        }
+        
+        redis_client.hset(room_key, mapping=room_data)
+        redis_client.set(f"room:{room_id}:name", name)  # For compatibility
+        
+        # Add creator to room
+        redis_client.sadd(f"room:{room_id}:members", user_id)
+        redis_client.sadd(f"user:{user_id}:rooms", room_id)
+        
+        print(f"[API] Channel '{name}' created with ID {room_id} by user {user_id}")
+        
+        return jsonify({
+            "id": room_id,
+            "name": name,
+            "type": channel_type,
+            "description": description,
+            "created_by": user_id,
+            "member_count": 1
+        }), 201
+        
+    except Exception as e:
+        print(f"[API] Error creating channel: {e}")
+        return jsonify({"error": "Failed to create channel"}), 500
+
+@app.route("/api/channels", methods=["OPTIONS"])
+def handle_channels_preflight():
+    """Handle CORS preflight for channels endpoint"""
+    from flask import Response
+    
+    origin = request.headers.get('Origin')
+    allowed_origins = [
+        "https://guideops-chat-frontend.vercel.app",
+        "http://localhost:3000"
+    ]
+    
+    if origin in allowed_origins:
+        response = Response()
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+        response.headers['Access-Control-Max-Age'] = '86400'
+        response.headers['Vary'] = 'Origin'
+        return response
+    else:
+        return jsonify({"error": "CORS policy violation"}), 403
+
 @app.route("/admin")
 def admin_panel():
     """Simple admin panel for GuideOps chat"""
