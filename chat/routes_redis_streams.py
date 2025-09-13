@@ -74,7 +74,11 @@ def send_message_v2(room_id):
             longitude=float(longitude) if longitude is not None else None
         )
         
-        print(f"[API v2] Message sent to room {room_id} by user {user_id}: {result['id']}")
+        # Instant fan-out via Socket.IO for real-time delivery
+        from chat.app import socketio
+        socketio.emit("message", result, to=str(room_id))
+        
+        print(f"[API v2] Message sent to room {room_id} by user {user_id}: {result['id']} (Socket.IO fan-out)")
         
         return jsonify({"ok": True, "message": result}), 201
         

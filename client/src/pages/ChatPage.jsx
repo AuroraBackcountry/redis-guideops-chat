@@ -200,85 +200,61 @@ export default function ChatPage({ user, onMessageSend }) {
     );
   }, [user]);
   
-  // Add real-time message listener for Redis Streams v2 with XREAD blocking
+  // Real-time messaging via Socket.IO (replaces EventSource/SSE)
   useEffect(() => {
     if (!user) return;
     
-    const connectionId = Math.random().toString(36).substr(2, 9);
-    console.log(`[ChatPage] Setting up XREAD real-time listener (Connection: ${connectionId})`);
+    console.log('[ChatPage] Setting up Socket.IO real-time listener for V2');
     
-    // Listen for new messages via Server-Sent Events with proper credentials
-    const eventSource = new EventSource(
-      `https://redis-guideops-chat-production.up.railway.app/v2/stream/${user.id}`,
-      { withCredentials: true }
-    );
+    // Get Socket.IO instance from hooks
+    const socket = window.socket; // Assuming socket is available globally
     
-    eventSource.onopen = function(event) {
-      console.log(`[ChatPage] ✅ EventSource connection established (${connectionId})`);
-    };
-    
-    eventSource.onmessage = function(event) {
-      try {
-        const data = JSON.parse(event.data);
-        // Only log actual messages, not heartbeats or system events
-        if (data.type === 'message') {
-          console.log(`[ChatPage] Real-time message: ${data.data?.id} from ${data.data?.user?.username}`);
-        }
+    if (socket) {
+      // Join current room for real-time updates
+      socket.emit('join', roomId);
+      console.log(`[ChatPage] Joined room ${roomId} via Socket.IO`);
+      
+      // Listen for real-time messages
+      const handleMessage = (message) => {
+        console.log(`[ChatPage] Socket.IO message received: ${message.id} from ${message.user?.username}`);
         
-        if (data.type === 'backlog_end') {
-          console.log('[ChatPage] ✅ Catch-up complete, now receiving real-time messages');
-          return;
-        }
-        
-        if (data.type === 'keepalive') {
-          // Heartbeat - do nothing, don't log (prevents spam)
-          return;
-        }
-        
-        if (data.type === 'message' && data.data) {
-          const message = data.data;
+        // Only add messages for current room that aren't already in state
+        if (message.roomId === roomId && !messages.find(m => m.id === message.id)) {
+          console.log(`[ChatPage] Adding Socket.IO message: ${message.id}`);
           
-          // Only add messages for the current room and that aren't already in our local state
-          if (message.roomId === roomId && !messages.find(m => m.id === message.id)) {
-            console.log(`[ChatPage] Adding real-time message: ${message.id} from user ${message.user?.username}`);
-            
-            setMessages(prev => {
-              // Check if message already exists to prevent duplicates
-              if (prev.find(m => m.id === message.id)) {
-                return prev;
-              }
-              return [...prev, message];
-            });
-            
-            // Track for acknowledgment
-            setPendingAcks(prev => ({
-              ...prev,
-              [message.roomId]: message.id
-            }));
-            
-            // Scroll to bottom for new messages
-            if (messageListElement.current) {
-              setTimeout(() => {
-                messageListElement.current.scrollTop = messageListElement.current.scrollHeight;
-              }, 100);
+          setMessages(prev => {
+            // Prevent duplicates
+            if (prev.find(m => m.id === message.id)) {
+              return prev;
             }
+            return [...prev, message];
+          });
+          
+          // Track for acknowledgment
+          setPendingAcks(prev => ({
+            ...prev,
+            [message.roomId]: message.id
+          }));
+          
+          // Auto-scroll
+          if (messageListElement.current) {
+            setTimeout(() => {
+              messageListElement.current.scrollTop = messageListElement.current.scrollHeight;
+            }, 100);
           }
         }
-      } catch (error) {
-        console.error('[ChatPage] Error processing real-time message:', error);
-      }
-    };
-    
-    eventSource.onerror = function(error) {
-      console.error('[ChatPage] ❌ EventSource connection error:', error);
-      console.log('[ChatPage] EventSource readyState:', eventSource.readyState);
-    };
-    
-    return () => {
-      console.log(`[ChatPage] Cleaning up real-time listener (${connectionId})`);
-      eventSource.close();
-    };
-  }, [user, roomId]); // Don't include messages to avoid EventSource recreation
+      };
+      
+      socket.on('message', handleMessage);
+      
+      return () => {
+        console.log('[ChatPage] Cleaning up Socket.IO listener');
+        socket.off('message', handleMessage);
+      };
+    } else {
+      console.warn('[ChatPage] Socket.IO not available, falling back to polling');
+    }
+  }, [user, roomId, messages]); // Include messages for real-time updates
   
   // Periodic acknowledgment sender (every 5 seconds)
   useEffect(() => {
