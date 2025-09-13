@@ -5,7 +5,7 @@ import MessageListV2 from "../components/MessageListV2";
 import TypingArea from "../components/Chat/components/TypingArea";
 import useChatHandlers from "../components/Chat/use-chat-handlers";
 import { getMessagesV2, sendMessageV2 } from "../api-v2";
-import { io } from "socket.io-client";
+import { useSocket } from "../hooks";
 // Removed api-v2-test import - file doesn't exist
 
 /**
@@ -111,9 +111,8 @@ export default function ChatPage({ user, onMessageSend }) {
   // Get basic state for room and user info (keep existing for compatibility)
   const { rooms, users, currentRoom, dispatch } = useChatHandlers(user);
   
-  // Direct Socket.IO connection (clean implementation)
-  const [socket, setSocket] = useState(null);
-  const [socketConnected, setSocketConnected] = useState(false);
+  // Use existing Socket.IO connection from hooks (avoid conflicts)
+  const [socket, socketConnected] = useSocket(user, dispatch);
   
   // Client acknowledgment function
   const acknowledgeMessages = useCallback(async (acks) => {
@@ -205,36 +204,18 @@ export default function ChatPage({ user, onMessageSend }) {
     );
   }, [user]);
   
-  // Direct Socket.IO connection for real-time messaging
+  // Socket.IO real-time messaging (using existing connection from hooks)
   useEffect(() => {
-    if (!user) return;
+    if (!user || !socket || !socketConnected) return;
     
-    console.log('[ChatPage] Setting up direct Socket.IO connection');
+    console.log('[ChatPage] Setting up Socket.IO real-time messaging');
     
-    // Create direct Socket.IO connection
-    const socketConnection = io("https://redis-guideops-chat-production.up.railway.app", {
-      transports: ["websocket"],       // Force WebSocket (simplifies proxies)
-      withCredentials: true,           // Send session cookie
-      path: "/socket.io/",             // Default path
-      reconnection: true,              // Auto-reconnect
-    });
-    
-    socketConnection.on('connect', () => {
-      console.log('[ChatPage] ✅ Socket.IO connected');
-      setSocketConnected(true);
-      
-      // Join current room immediately
-      socketConnection.emit("room.join", roomId);
-      console.log(`[ChatPage] Joined room ${roomId} via Socket.IO`);
-    });
-    
-    socketConnection.on('disconnect', () => {
-      console.log('[ChatPage] Socket.IO disconnected');
-      setSocketConnected(false);
-    });
+    // Join current room for real-time updates
+    socket.emit("room.join", roomId);
+    console.log(`[ChatPage] Joined room ${roomId} via Socket.IO`);
     
     // Listen for real-time messages
-    socketConnection.on('message', (message) => {
+    const handleMessage = (message) => {
       console.log(`[ChatPage] Socket.IO message: ${message.id} from ${message.user?.username}`);
       
       // Only add messages for current room that aren't already in state
@@ -262,15 +243,15 @@ export default function ChatPage({ user, onMessageSend }) {
           }, 100);
         }
       }
-    });
+    };
     
-    setSocket(socketConnection);
+    socket.on('message', handleMessage);
     
     return () => {
-      console.log('[ChatPage] Cleaning up Socket.IO connection');
-      socketConnection.disconnect();
+      console.log('[ChatPage] Cleaning up Socket.IO message listener');
+      socket.off('message', handleMessage);
     };
-  }, [user, roomId]); // Clean dependencies
+  }, [user, roomId, socket, socketConnected]); // Depend on socket state
   
   // Periodic acknowledgment sender (every 5 seconds)
   useEffect(() => {
