@@ -138,7 +138,8 @@ const MessageListV2 = ({
             const senderId = normId(message?.author_id || message?.from);
             const isSelf = senderId === currentUserId;
             
-            console.log(`[MessageV2] ID: ${message.id} | From: ${senderId} | Current: ${currentUserId} | IsSelf: ${isSelf} | User: ${message.user?.username}`);
+            // REMOVED: Render-time logging causes console flood
+            // console.log(`[MessageV2] ID: ${message.id} | From: ${senderId} | Current: ${currentUserId} | IsSelf: ${isSelf} | User: ${message.user?.username}`);
             
             return (
               <Row

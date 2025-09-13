@@ -204,7 +204,8 @@ export default function ChatPage({ user, onMessageSend }) {
   useEffect(() => {
     if (!user) return;
     
-    console.log('[ChatPage] Setting up XREAD real-time listener for Redis Streams v2');
+    const connectionId = Math.random().toString(36).substr(2, 9);
+    console.log(`[ChatPage] Setting up XREAD real-time listener (Connection: ${connectionId})`);
     
     // Listen for new messages via Server-Sent Events with proper credentials
     const eventSource = new EventSource(
@@ -213,13 +214,16 @@ export default function ChatPage({ user, onMessageSend }) {
     );
     
     eventSource.onopen = function(event) {
-      console.log('[ChatPage] ✅ EventSource connection established');
+      console.log(`[ChatPage] ✅ EventSource connection established (${connectionId})`);
     };
     
     eventSource.onmessage = function(event) {
       try {
         const data = JSON.parse(event.data);
-        console.log('[ChatPage] Real-time event received:', data);
+        // Only log actual messages, not heartbeats or system events
+        if (data.type === 'message') {
+          console.log(`[ChatPage] Real-time message: ${data.data?.id} from ${data.data?.user?.username}`);
+        }
         
         if (data.type === 'backlog_end') {
           console.log('[ChatPage] ✅ Catch-up complete, now receiving real-time messages');
@@ -227,7 +231,7 @@ export default function ChatPage({ user, onMessageSend }) {
         }
         
         if (data.type === 'keepalive') {
-          console.log('[ChatPage] 💓 Keepalive received');
+          // Heartbeat - do nothing, don't log (prevents spam)
           return;
         }
         
@@ -271,7 +275,7 @@ export default function ChatPage({ user, onMessageSend }) {
     };
     
     return () => {
-      console.log('[ChatPage] Cleaning up real-time listener');
+      console.log(`[ChatPage] Cleaning up real-time listener (${connectionId})`);
       eventSource.close();
     };
   }, [user, roomId]); // Don't include messages to avoid EventSource recreation
