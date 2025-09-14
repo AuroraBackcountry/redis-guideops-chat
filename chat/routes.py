@@ -971,6 +971,22 @@ def debug_redis_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/init/general-room", methods=["POST"])
+def init_general_room():
+    """Initialize General room if it doesn't exist"""
+    try:
+        # Check if General room name exists
+        general_room_name = redis_client.get("room:0:name")
+        if not general_room_name:
+            # Create General room
+            redis_client.set("room:0:name", "General")
+            print("[API] Created General room")
+            return jsonify({"success": True, "message": "General room created"})
+        else:
+            return jsonify({"success": True, "message": "General room already exists"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/admin")
 def admin_panel():
     """Simple admin panel for GuideOps chat"""
