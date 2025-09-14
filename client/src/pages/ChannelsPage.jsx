@@ -337,18 +337,21 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
               </div>
             )}
             
-            {/* Elrich AI Channel Creator */}
+            {/* Elrich AI Channel Creator - Uses existing /v2/bot/setup endpoint */}
             <div className="text-center p-2 border-top">
               <button
                 className="btn btn-success btn-sm mr-2"
                 onClick={async () => {
                   try {
-                    const response = await axios.post(url('/api/channels/create-elrich'), {}, {
+                    const response = await axios.post(url('/v2/bot/setup'), {}, {
                       withCredentials: true
                     });
                     if (response.data.success) {
-                      alert('🤖 ' + response.data.message);
+                      alert('🤖 Elrich AI channel created! Check your channels list.');
                       searchAvailableChannels(); // Refresh to show new channel
+                      
+                      // Refresh the main page to load the new channel
+                      window.location.reload();
                     }
                   } catch (error) {
                     console.error('Failed to create Elrich channel:', error);
