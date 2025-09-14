@@ -5,17 +5,82 @@ Professional message handling with perfect attribution
 
 from flask import request, jsonify, session
 from chat.app import app
-from chat.redis_streams import redis_streams
+from chat.redis_streams import redis_streams, get_user_data
 from chat import utils
 from chat.utils import redis_client
-from chat.routes import get_user_data  # Import user data function
 import json
 import requests  # Use requests instead of httpx
+from chat.message_validator import publish_message
 
 # Add bot constants at top
 BOT_USER_ID = "bot_elrich"
 BOT_ROOM_ID = "bot_room"
 FASTAPI_BOT_URL = "http://127.0.0.1:3002/chat"  # Your FastAPI endpoint
+
+
+def validate_location(lat, lon):
+    """
+    Validate GPS coordinates with proper bounds checking
+    Args:
+        lat: Latitude value (can be None, string, or float)
+        lon: Longitude value (can be None, string, or float)
+    Returns:
+        tuple: (validated_lat, validated_lon) as floats or None
+    Raises:
+        ValueError: If coordinates are out of valid range
+    """
+    if lat is None and lon is None:
+        return None, None
+    
+    if lat is not None:
+        try:
+            lat_float = float(lat)
+            if not (-90 <= lat_float <= 90):
+                raise ValueError(f"Invalid latitude {lat_float}: must be between -90 and 90")
+            lat = lat_float
+        except (ValueError, TypeError) as e:
+            if "must be between" in str(e):
+                raise  # Re-raise our custom message
+            raise ValueError(f"Invalid latitude format: {lat}")
+    
+    if lon is not None:
+        try:
+            lon_float = float(lon)
+            if not (-180 <= lon_float <= 180):
+                raise ValueError(f"Invalid longitude {lon_float}: must be between -180 and 180")
+            lon = lon_float
+        except (ValueError, TypeError) as e:
+            if "must be between" in str(e):
+                raise  # Re-raise our custom message
+            raise ValueError(f"Invalid longitude format: {lon}")
+    
+    return lat, lon
+
+
+def handle_api_error(error, context="API", status_code=500):
+    """
+    Standard error handler for consistent API responses
+    Args:
+        error: Exception or error message
+        context: Context string for logging (e.g., "API v2", "Bot", "Auth")
+        status_code: HTTP status code to return
+    Returns:
+        tuple: (jsonify response, status_code)
+    """
+    error_msg = str(error)
+    print(f"[{context}] Error: {error_msg}")
+    
+    return jsonify({
+        "ok": False, 
+        "error": error_msg,
+        "context": context
+    }), status_code
+
+
+def emit_message_once(room_id, message_data):
+    """Single point for all message emissions"""
+    from chat.socketio_v2 import socketio
+    socketio.emit('message', message_data, room=f"room_{room_id}")
 
 @app.route("/v2/rooms/<room_id>/messages", methods=["GET"])
 def get_room_messages_v2(room_id):
@@ -70,15 +135,14 @@ def handle_bot_webhook():
         print(f"[BOT WEBHOOK] Posted AI response to room {room_id}: {result['id']}")
         
         # Emit to Socket.IO for real-time delivery
-        from chat.socketio_v2 import socketio
-        socketio.emit('message', {
+        emit_message_once(room_id, {
             'id': result['id'],
             'user_id': user_id,
             'user_name': 'Elrich AI',
             'text': message_text,
             'timestamp': result['timestamp'],
             'room_id': room_id
-        }, room=f"room_{room_id}")
+        })
         
         return jsonify({"success": True, "message_id": result['id']})
         
@@ -177,7 +241,7 @@ def handle_bot_message(room_id, user_id, message_text, latitude, longitude):
                 )
                 
                 # Emit bot response to all users (including original sender)
-                socketio.emit("message", bot_message, to=str(room_id))
+                emit_message_once(room_id, bot_message)
                 
                 return jsonify({"ok": True, "user_message": user_message, "bot_message": bot_message}), 201
             else:
@@ -189,7 +253,7 @@ def handle_bot_message(room_id, user_id, message_text, latitude, longitude):
                     latitude=None,
                     longitude=None
                 )
-                socketio.emit("message", error_msg, to=str(room_id))
+                emit_message_once(room_id, error_msg)
                 return jsonify({"ok": False, "error": "Bot unavailable"}), 500
                 
         except Exception as bot_error:
@@ -201,7 +265,7 @@ def handle_bot_message(room_id, user_id, message_text, latitude, longitude):
                 latitude=None,
                 longitude=None
             )
-            socketio.emit("message", error_msg, to=str(room_id))
+            emit_message_once(room_id, error_msg)
             return jsonify({"ok": True, "user_message": user_message, "bot_message": error_msg}), 201
             
     except Exception as e:
@@ -235,18 +299,23 @@ def send_message_v2(room_id):
     latitude = body.get("lat") or body.get("latitude")
     longitude = body.get("long") or body.get("longitude") 
     
+    # Validate GPS coordinates if provided
+    validated_lat, validated_lon = None, None
+    try:
+        validated_lat, validated_lon = validate_location(latitude, longitude)
+        if validated_lat is not None:
+            body["lat"] = validated_lat
+        if validated_lon is not None:
+            body["long"] = validated_lon
+    except ValueError as e:
+        return handle_api_error(e, "GPS Validation", 400)
+    
     # Bot room now works like normal channel - frontend handles N8N direct
     # This enables instant parallel processing: storage + AI response
     
     try:
         # Use Redis Streams system with user data enrichment
-        result = redis_streams.add_message(
-            room_id=room_id,
-            user_id=user_id,
-            message_text=message_text,
-            latitude=float(latitude) if latitude is not None else None,
-            longitude=float(longitude) if longitude is not None else None
-        )
+        result = publish_message(room_id, {"id": user_id}, body, redis_client)
         
         # Skip Socket.IO emission for HTTP requests to prevent duplicate messages
         # The frontend gets the message from the HTTP response
@@ -254,16 +323,14 @@ def send_message_v2(room_id):
         # from chat.app import socketio
         # socketio.emit("message", result, to=str(room_id))
         
-        print(f"[API v2] Message sent to room {room_id} by user {user_id}: {result['id']} (Socket.IO fan-out)")
+        print(f"[API v2] ✅ Message sent to room {room_id} by user {user_id}: {result.get('message_id', 'unknown')} | GPS: {'Yes' if validated_lat or validated_lon else 'No'}")
         
         return jsonify({"ok": True, "message": result}), 201
         
     except ValueError as e:
-        print(f"[API v2] Validation error: {e}")
-        return jsonify({"ok": False, "error": str(e)}), 400
+        return handle_api_error(e, "API v2 Validation", 400)
     except Exception as e:
-        print(f"[API v2] Error sending message to room {room_id}: {e}")
-        return jsonify({"ok": False, "error": "Failed to send message"}), 500
+        return handle_api_error(f"Failed to send message to room {room_id}: {e}", "API v2")
 
 
 @app.route("/v2/ack", methods=["POST"])
@@ -494,3 +561,11 @@ def redis_streams_status():
             "redis_streams": "error",
             "error": str(e)
         }), 500
+
+def validate_location(lat, lon):
+    """Validate GPS coordinates"""
+    if lat is not None and not (-90 <= float(lat) <= 90):
+        raise ValueError("Invalid latitude")
+    if lon is not None and not (-180 <= float(lon) <= 180):
+        raise ValueError("Invalid longitude")
+    return float(lat) if lat else None, float(lon) if lon else None

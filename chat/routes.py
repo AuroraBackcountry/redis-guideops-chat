@@ -3,44 +3,9 @@ import bcrypt
 import json
 import time
 from chat import utils
-
-def get_user_data(user_id):
-    """
-    Get user data following Redis best practices (simple and clean)
-    Based on Redis documentation: HGETALL user:{id}
-    """
-    if not user_id:
-        return None
-        
-    user_data = redis_client.hgetall(f"user:{user_id}")
-    if not user_data:
-        return None
-    
-    # Core fields following Redis documentation
-    user_id_str = str(user_id)
-    first_name = user_data.get(b"first_name", "").decode('utf-8')
-    last_name = user_data.get(b"last_name", "").decode('utf-8')
-    email_bytes = user_data.get(b"email") or user_data.get(b"username", b"")
-    email = email_bytes.decode('utf-8') if email_bytes else ""
-    role = user_data.get(b"role", "user").decode('utf-8')
-    
-    # Create display name for UI
-    if first_name or last_name:
-        display_name = f"{first_name} {last_name}".strip()
-    else:
-        display_name = email
-    
-    # Simple user object (Redis best practices) - Clean order
-    return {
-        "id": user_id_str,
-        "email": email,
-        "first_name": first_name,
-        "last_name": last_name,
-        "username": display_name,  # Display name for UI
-        "role": role
-    }
 from chat.utils import redis_client
 from chat.app import app
+from chat.redis_streams import get_user_data  # Use centralized user data function
 
 # Simple original routes for Redis chat
 
@@ -797,7 +762,7 @@ def create_channel():
             "description": description,
             "created_by": user_id,
             "created_at": str(time.time()),
-            "member_count": "1"
+            "members": json.dumps([user_id])  # JSON array instead of separate set
         }
         
         redis_client.hset(room_key, mapping=room_data)
