@@ -8,7 +8,7 @@ const BASE_URL = process.env.NODE_ENV === 'production'
 
 export const MESSAGES_TO_LOAD = 15;
 
-const url = x => `${BASE_URL}${x}`;
+export const url = x => `${BASE_URL}${x}`;
 
 // Log API configuration for debugging
 console.log(`[API] Environment: ${process.env.NODE_ENV}`);
