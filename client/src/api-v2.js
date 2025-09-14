@@ -68,16 +68,17 @@ export const getMessagesV2 = (roomId, count = 15, beforeId = null) => {
  * @param {number} options.longitude - GPS longitude
  * @returns {Promise<Object>} Complete message object with stream ID
  */
-export const sendMessageV2 = (roomId, messageText, options = {}) => {
+export const sendMessageV2 = async (roomId, messageText, options = {}) => {
   const payload = {
     message: messageText
   };
   
   // Add user ID for cross-domain authentication
+  let userData = {};
   try {
     const storedUser = localStorage.getItem('guideops_user');
     if (storedUser) {
-      const userData = JSON.parse(storedUser);
+      userData = JSON.parse(storedUser);
       payload.user_id = userData.id;
       console.log(`[API v2] Including user_id in request: ${userData.id} (${userData.username})`);
     }
@@ -91,9 +92,49 @@ export const sendMessageV2 = (roomId, messageText, options = {}) => {
     payload.longitude = options.longitude;
   }
   
-  return axios.post(url(`/v2/rooms/${roomId}/messages`), payload)
+  // SPLIT APPROACH: For bot room, send directly to N8N in parallel with backend storage
+  if (roomId === 'bot_room') {
+    // Send to N8N directly for instant AI processing (fire-and-forget)
+    try {
+      const n8nPayload = {
+        room_id: roomId,
+        user: {
+          id: userData.id || '1',
+          first_name: userData.first_name || 'Unknown',
+          last_name: userData.last_name || 'User',
+          email: userData.email || 'unknown@example.com'
+        },
+        message: {
+          text: messageText,
+          latitude: options.latitude || null,
+          longitude: options.longitude || null
+        }
+      };
+      
+      // Direct N8N webhook (parallel, don't wait)
+      fetch('https://n8n-aurora-ai.com/webhook/stream/query-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'User-Agent': 'GuideOps-Chat-Frontend/1.0'
+        },
+        body: JSON.stringify(n8nPayload)
+      }).then(() => {
+        console.log('[N8N] Direct webhook sent for instant AI processing ⚡');
+      }).catch(err => {
+        console.warn('[N8N] Direct webhook failed:', err);
+      });
+      
+    } catch (e) {
+      console.warn('[N8N] Failed to prepare direct webhook:', e);
+    }
+  }
+  
+  // Always store in backend (parallel to N8N for bot room)
+  return axios.post(url(`/v2/rooms/${roomId}/messages`), payload, { withCredentials: true })
     .then(response => {
-      console.log(`[API v2] Message sent to room ${roomId}${options.latitude ? ' with location' : ''}:`, response.data.message?.id);
+      const messageId = response.data?.message?.id;
+      console.log(`[API v2] Message sent to room ${roomId}${options.latitude ? ' with location' : ''}:`, messageId);
       return response.data.message; // Extract the message from the API response
     })
     .catch(error => {

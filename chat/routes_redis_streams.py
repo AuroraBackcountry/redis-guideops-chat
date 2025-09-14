@@ -191,57 +191,8 @@ def send_message_v2(room_id):
     latitude = body.get("lat") or body.get("latitude")
     longitude = body.get("long") or body.get("longitude") 
     
-    # Check if this is bot room - forward to N8N webhook  
-    if room_id == BOT_ROOM_ID:
-        # Store message normally first
-        result = redis_streams.add_message(
-            room_id=room_id,
-            user_id=user_id, 
-            message_text=message_text,
-            latitude=float(latitude) if latitude is not None else None,
-            longitude=float(longitude) if longitude is not None else None
-        )
-        
-        # Forward to N8N webhook (fire-and-forget)
-        try:
-            user_data = get_user_data(user_id) or {"first_name": "Unknown", "last_name": "User", "email": "unknown@example.com"}
-            
-            webhook_payload = {
-                "room_id": room_id,
-                "message_id": result["id"],
-                "user": {
-                    "id": user_id,
-                    "first_name": user_data.get('first_name', ''),
-                    "last_name": user_data.get('last_name', ''),
-                    "email": user_data.get('email', 'unknown@example.com')
-                },
-                "message": {
-                    "text": message_text,
-                    "latitude": latitude,
-                    "longitude": longitude
-                }
-            }
-            
-            # Fire-and-forget webhook to N8N
-            import json as json_module
-            webhook_response = requests.post(
-                "https://n8n-aurora-ai.com/webhook/stream/query-ai",
-                data=json_module.dumps(webhook_payload),
-                timeout=5.0,  # Short timeout, don't wait
-                headers={
-                    'Content-Type': 'application/json; charset=utf-8',
-                    'User-Agent': 'GuideOps-Chat-Bot/1.0',
-                    'Accept': 'application/json'
-                }
-            )
-            print(f"[WEBHOOK] Sent to N8N - Status: {webhook_response.status_code}, Response: {webhook_response.text[:200]}")
-            print(f"[WEBHOOK] Payload sent: {json.dumps(webhook_payload, indent=2)}")
-            
-        except Exception as webhook_error:
-            print(f"[WEBHOOK] Failed to forward to N8N: {webhook_error}")
-            # Continue normally even if webhook fails
-        
-        return jsonify({"ok": True, "message": result}), 201
+    # Bot room now works like normal channel - frontend handles N8N direct
+    # This enables instant parallel processing: storage + AI response
     
     try:
         # Use Redis Streams system with user data enrichment
