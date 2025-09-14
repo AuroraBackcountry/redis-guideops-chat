@@ -10,6 +10,13 @@ from chat import utils
 from chat.utils import redis_client
 from chat.routes import get_user_data  # Import user data function
 import json
+import asyncio
+import httpx
+
+# Add bot constants at top
+BOT_USER_ID = "bot_elrich"
+BOT_ROOM_ID = "bot_room"
+FASTAPI_BOT_URL = "http://127.0.0.1:3002/chat"  # Your FastAPI endpoint
 
 @app.route("/v2/rooms/<room_id>/messages", methods=["GET"])
 def get_room_messages_v2(room_id):
@@ -37,6 +44,112 @@ def get_room_messages_v2(room_id):
         return jsonify({"error": "Failed to load messages"}), 500
 
 
+@app.route("/v2/bot/setup", methods=["POST"])
+def setup_bot_room():
+    """Initialize bot user and room (admin only)"""
+    try:
+        # Create bot user in Redis if not exists
+        bot_user_key = f"user:{BOT_USER_ID}"
+        if not redis_client.exists(bot_user_key):
+            redis_client.hset(bot_user_key, mapping={
+                "id": BOT_USER_ID,
+                "username": "Elrich AI",
+                "first_name": "Elrich",
+                "last_name": "AI",
+                "email": "elrich@guideops.ai",
+                "role": "bot"
+            })
+        
+        # Set bot room name so it appears in room lists
+        redis_client.set(f"room:{BOT_ROOM_ID}:name", "🤖 Elrich AI")
+        
+        # Add bot room to all existing users' room lists
+        all_user_keys = redis_client.keys("user:*")
+        for user_key in all_user_keys:
+            if b":" in user_key:  # Skip non-user keys
+                user_id = user_key.decode('utf-8').split(':')[1]
+                if user_id != BOT_USER_ID:  # Don't add bot to its own rooms
+                    redis_client.sadd(f"user:{user_id}:rooms", BOT_ROOM_ID)
+        
+        # Add welcome message to bot room
+        welcome_msg = redis_streams.add_info_message(
+            BOT_ROOM_ID,
+            "🤖 Welcome to Elrich AI! Ask me anything about guiding."
+        )
+        
+        return jsonify({
+            "success": True, 
+            "bot_room": BOT_ROOM_ID,
+            "message": "Bot room added to all users"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+async def handle_bot_message(room_id, user_id, message_text, latitude, longitude):
+    """Handle message to bot - HTTP request to FastAPI"""
+    try:
+        # First, save user's message to Redis Streams
+        user_message = redis_streams.add_message(
+            room_id=room_id,
+            user_id=user_id,
+            message_text=message_text,
+            latitude=latitude,
+            longitude=longitude
+        )
+        
+        # Emit user message immediately
+        from chat.app import socketio
+        socketio.emit("message", user_message, to=str(room_id))
+        
+        # Get user data for FastAPI request
+        user_data = get_user_data(user_id)
+        
+        # Send to FastAPI/N8N
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                FASTAPI_BOT_URL,
+                json={
+                    "text": message_text,
+                    "user_id": user_id,
+                    "user_name": f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip(),
+                    "user_email": user_data.get('email', 'unknown@example.com')
+                },
+                timeout=30.0
+            )
+            
+            if response.status_code == 200:
+                bot_response_text = response.text
+                
+                # Save bot response to Redis Streams
+                bot_message = redis_streams.add_message(
+                    room_id=room_id,
+                    user_id=BOT_USER_ID,
+                    message_text=bot_response_text,
+                    latitude=latitude,  # Same location as user
+                    longitude=longitude
+                )
+                
+                # Emit bot response
+                socketio.emit("message", bot_message, to=str(room_id))
+                
+                return jsonify({"ok": True, "user_message": user_message, "bot_message": bot_message}), 201
+            else:
+                # Bot error - send error message
+                error_msg = redis_streams.add_message(
+                    room_id=room_id,
+                    user_id=BOT_USER_ID,
+                    message_text="Sorry, I'm having technical difficulties. Please try again.",
+                    latitude=None,
+                    longitude=None
+                )
+                socketio.emit("message", error_msg, to=str(room_id))
+                return jsonify({"ok": False, "error": "Bot unavailable"}), 500
+                
+    except Exception as e:
+        print(f"[BOT] Error: {e}")
+        return jsonify({"ok": False, "error": "Bot request failed"}), 500
+
 @app.route("/v2/rooms/<room_id>/messages", methods=["POST"])
 def send_message_v2(room_id):
     """Send message using Redis Streams with user data enrichment"""
@@ -63,6 +176,12 @@ def send_message_v2(room_id):
     # Extract GPS coordinates if provided
     latitude = body.get("lat") or body.get("latitude")
     longitude = body.get("long") or body.get("longitude") 
+    
+    # Check if this is bot room
+    if room_id == BOT_ROOM_ID:
+        return handle_bot_message(room_id, user_id, message_text, 
+                                float(latitude) if latitude is not None else None,
+                                float(longitude) if longitude is not None else None)
     
     try:
         # Use Redis Streams system with user data enrichment
