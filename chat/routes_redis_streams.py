@@ -10,8 +10,7 @@ from chat import utils
 from chat.utils import redis_client
 from chat.routes import get_user_data  # Import user data function
 import json
-import asyncio
-import httpx
+import requests
 
 # Add bot constants at top
 BOT_USER_ID = "bot_elrich"
@@ -85,7 +84,7 @@ def setup_bot_room():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-async def handle_bot_message(room_id, user_id, message_text, latitude, longitude):
+def handle_bot_message(room_id, user_id, message_text, latitude, longitude):
     """Handle message to bot - HTTP request to FastAPI"""
     try:
         # First, save user's message to Redis Streams
@@ -105,9 +104,7 @@ async def handle_bot_message(room_id, user_id, message_text, latitude, longitude
         user_data = get_user_data(user_id)
         
         # Send to FastAPI/N8N
-        import httpx
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
+            response = requests.post(
                 FASTAPI_BOT_URL,
                 json={
                     "text": message_text,
