@@ -24,10 +24,12 @@ CORS(app,
         "https://guideops-chat-frontend.vercel.app",  # Production frontend
         "https://guideops-chat-frontend-*.vercel.app",  # Preview deployments
         "http://localhost:3000",  # Local development
+        "https://*.vercel.app",  # All Vercel subdomains
     ],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Last-Event-ID"],
-    methods=["GET", "POST", "OPTIONS"],
-    vary_header=True  # Add Vary: Origin header
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Last-Event-ID", "Access-Control-Allow-Origin"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    vary_header=True,  # Add Vary: Origin header
+    expose_headers=["Access-Control-Allow-Origin"]
 )
 
 # Configure Socket.IO CORS for cross-origin communication
