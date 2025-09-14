@@ -207,14 +207,33 @@ const useAppHandlers = () => {
         localStorage.setItem('guideops_user_cache', JSON.stringify(updatedCache));
       });
       
-      // Initialize with General room only if no rooms exist
-      // This preserves created channels and prevents overwriting
+      // Load user's actual rooms from backend
       if (Object.values(state.rooms).length === 0) {
+        // First, add General room immediately for fast UI
         dispatch({
           type: "add room",
           payload: { id: "0", name: "General" }
         });
         dispatch({ type: "set current room", payload: "0" });
+        
+        // Then load user's actual room memberships from backend
+        import('./api').then(({ getRooms }) => {
+          getRooms(user.id).then((rooms) => {
+            console.log(`[App] Loading ${rooms.length} rooms for user ${user.id}:`, rooms);
+            rooms.forEach(room => {
+              dispatch({
+                type: "add room",
+                payload: { 
+                  id: room.id, 
+                  name: room.name,
+                  connected: false 
+                }
+              });
+            });
+          }).catch(error => {
+            console.error('[App] Failed to load user rooms:', error);
+          });
+        });
       }
     }
   }, [dispatch, user]); // Don't include state.rooms to prevent infinite loop
