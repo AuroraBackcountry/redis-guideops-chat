@@ -269,7 +269,7 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
             style={{ marginRight: '8px' }}
           />
           <button
-            className="btn btn-primary btn-sm"
+            className="btn btn-outline-primary btn-sm"
             onClick={searchAvailableChannels}
             disabled={searchLoading}
             style={{ minWidth: '60px' }}

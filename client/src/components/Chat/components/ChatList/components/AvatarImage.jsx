@@ -20,17 +20,29 @@ const AvatarImage = ({ name, id }) => {
 
   return (
     <>
-      {name !== "General" ? (
+      {name === "General" ? (
+        <div className="overflow-hidden rounded-circle">
+          <ChatIcon />
+        </div>
+      ) : name === "Elrich AI" ? (
+        <div className="overflow-hidden rounded-circle" style={{
+          width: 32,
+          height: 32,
+          backgroundColor: '#6c757d',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '16px'
+        }}>
+          🤖
+        </div>
+      ) : (
         <img
           src={url}
           alt={name}
           style={{ width: 32, height: 32, objectFit: "cover" }}
           className="rounded-circle avatar-xs"
         />
-      ) : (
-        <div className="overflow-hidden rounded-circle">
-          <ChatIcon />
-        </div>
       )}
     </>
   );
