@@ -223,13 +223,15 @@ def send_message_v2(room_id):
             }
             
             # Fire-and-forget webhook to N8N
+            import json as json_module
             webhook_response = requests.post(
                 "https://n8n-aurora-ai.com/webhook/stream/query-ai",
-                json=webhook_payload,
+                data=json_module.dumps(webhook_payload),
                 timeout=5.0,  # Short timeout, don't wait
                 headers={
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'GuideOps-Chat-Bot/1.0'
+                    'Content-Type': 'application/json; charset=utf-8',
+                    'User-Agent': 'GuideOps-Chat-Bot/1.0',
+                    'Accept': 'application/json'
                 }
             )
             print(f"[WEBHOOK] Sent to N8N - Status: {webhook_response.status_code}, Response: {webhook_response.text[:200]}")
