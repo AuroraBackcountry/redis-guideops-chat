@@ -317,6 +317,21 @@ def send_message_v2(room_id):
         # Use Redis Streams system with user data enrichment
         result = publish_message(room_id, {"id": user_id}, body, redis_client)
         
+        # Fix timestamp format for frontend compatibility
+        if 'ts_ms' in result:
+            result['date'] = result['ts_ms']  # Frontend now expects milliseconds with moment()
+        
+        # Add user data for frontend compatibility
+        user_data = get_user_data(user_id)
+        if user_data:
+            result['from'] = user_id
+            result['user'] = {
+                "id": user_id,
+                "username": user_data.get("username", f"User {user_id}"),
+                "first_name": user_data.get("first_name", ""),
+                "last_name": user_data.get("last_name", "")
+            }
+        
         # Skip Socket.IO emission for HTTP requests to prevent duplicate messages
         # The frontend gets the message from the HTTP response
         # Socket.IO is only used for messages from other users and bots

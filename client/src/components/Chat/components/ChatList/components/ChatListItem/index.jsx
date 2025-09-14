@@ -36,7 +36,7 @@ const ChatListItem = ({ room, active = false, onClick }) => {
       </div>
       {lastMessage && (
         <div className="font-size-11">
-          {moment.unix(lastMessage.date).format("LT")}
+          {moment(lastMessage.date).format("LT")}
         </div>
       )}
     </div>

@@ -33,7 +33,7 @@ const SenderMessage = ({
           </div>
           <p className="text-left">{message}</p>
           <p className="chat-time mb-0">
-            <ClockIcon /> {moment.unix(date).format("LT")}{" "}
+            <ClockIcon /> {moment(date).format("LT")}{" "}
           </p>
         </div>
       </div>
