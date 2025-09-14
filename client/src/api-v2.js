@@ -119,7 +119,8 @@ export const sendMessageV2 = async (roomId, messageText, options = {}) => {
         user_name: `${userData.first_name || 'Unknown'} ${userData.last_name || 'User'}`,
         room_id: roomId,
         latitude: options.latitude || null,
-        longitude: options.longitude || null
+        longitude: options.longitude || null,
+        webhook_url: 'https://redis-guideops-chat-production.up.railway.app/v2/bot/webhook'  // For N8N to post back
       };
       
       fetch('https://n8n-aurora-ai.com/webhook/stream/query-ai', {

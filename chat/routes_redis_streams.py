@@ -43,6 +43,50 @@ def get_room_messages_v2(room_id):
         return jsonify({"error": "Failed to load messages"}), 500
 
 
+@app.route("/v2/bot/webhook", methods=["POST"])
+def handle_bot_webhook():
+    """Handle N8N webhook responses - post AI messages back to chat"""
+    try:
+        data = request.get_json()
+        print(f"[BOT WEBHOOK] Received from N8N: {data}")
+        
+        # Extract message data from N8N webhook
+        message_text = data.get('text', '')
+        room_id = data.get('room_id', BOT_ROOM_ID)
+        user_id = BOT_USER_ID
+        
+        if not message_text:
+            return jsonify({"error": "No message text provided"}), 400
+        
+        # Post the AI response back to the chat room
+        result = redis_streams.add_message(
+            room_id=room_id,
+            user_id=user_id,
+            message_text=message_text,
+            latitude=None,
+            longitude=None
+        )
+        
+        print(f"[BOT WEBHOOK] Posted AI response to room {room_id}: {result['id']}")
+        
+        # Emit to Socket.IO for real-time delivery
+        from chat.socketio_v2 import socketio
+        socketio.emit('message', {
+            'id': result['id'],
+            'user_id': user_id,
+            'user_name': 'Elrich AI',
+            'text': message_text,
+            'timestamp': result['timestamp'],
+            'room_id': room_id
+        }, room=f"room_{room_id}")
+        
+        return jsonify({"success": True, "message_id": result['id']})
+        
+    except Exception as e:
+        print(f"[BOT WEBHOOK] Error processing webhook: {e}")
+        return jsonify({"error": "Failed to process webhook"}), 500
+
+
 @app.route("/v2/bot/setup", methods=["POST"])
 def setup_bot_room():
     """Initialize bot user and room (admin only)"""
