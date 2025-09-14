@@ -975,13 +975,26 @@ def debug_redis_data():
 def init_general_room():
     """Initialize General room if it doesn't exist"""
     try:
-        # Check if General room name exists
+        # Check if General room exists
+        general_room_exists = redis_client.exists("room:0")
         general_room_name = redis_client.get("room:0:name")
-        if not general_room_name:
-            # Create General room
+        
+        if not general_room_exists or not general_room_name:
+            # Create General room hash
+            redis_client.hset("room:0", mapping={
+                "name": "General",
+                "type": "public",
+                "description": "General discussion channel"
+            })
+            
+            # Create room name string
             redis_client.set("room:0:name", "General")
-            print("[API] Created General room")
-            return jsonify({"success": True, "message": "General room created"})
+            
+            # Create members set (empty initially)
+            redis_client.sadd("room:0:members", "1")  # Add user 1 as member
+            
+            print("[API] Created General room with full structure")
+            return jsonify({"success": True, "message": "General room created with full structure"})
         else:
             return jsonify({"success": True, "message": "General room already exists"})
     except Exception as e:
