@@ -10,7 +10,7 @@ from chat import utils
 from chat.utils import redis_client
 from chat.routes import get_user_data  # Import user data function
 import json
-import requests
+import requests  # Use requests instead of httpx
 
 # Add bot constants at top
 BOT_USER_ID = "bot_elrich"
@@ -96,12 +96,16 @@ def handle_bot_message(room_id, user_id, message_text, latitude, longitude):
             longitude=longitude
         )
         
-        # Emit user message immediately
-        from chat.app import socketio
-        socketio.emit("message", user_message, to=str(room_id))
+        # Skip emitting user message to prevent duplicates (user gets it via HTTP response)
+        # from chat.app import socketio
+        # socketio.emit("message", user_message, to=str(room_id))
         
         # Get user data for FastAPI request
-        user_data = get_user_data(user_id)
+        try:
+            user_data = get_user_data(user_id)
+        except Exception as e:
+            print(f"[BOT] Could not get user data: {e}")
+            user_data = {"first_name": "Unknown", "last_name": "User", "email": "unknown@example.com"}
         
         # Send to FastAPI/N8N
         try:
@@ -128,7 +132,7 @@ def handle_bot_message(room_id, user_id, message_text, latitude, longitude):
                     longitude=longitude
                 )
                 
-                # Emit bot response
+                # Emit bot response to all users (including original sender)
                 socketio.emit("message", bot_message, to=str(room_id))
                 
                 return jsonify({"ok": True, "user_message": user_message, "bot_message": bot_message}), 201
@@ -155,6 +159,7 @@ def handle_bot_message(room_id, user_id, message_text, latitude, longitude):
             )
             socketio.emit("message", error_msg, to=str(room_id))
             return jsonify({"ok": True, "user_message": user_message, "bot_message": error_msg}), 201
+            
     except Exception as e:
         print(f"[BOT] Error: {e}")
         return jsonify({"ok": False, "error": "Bot request failed"}), 500
@@ -202,9 +207,11 @@ def send_message_v2(room_id):
             longitude=float(longitude) if longitude is not None else None
         )
         
-        # Instant fan-out via Socket.IO for real-time delivery
-        from chat.app import socketio
-        socketio.emit("message", result, to=str(room_id))
+        # Skip Socket.IO emission for HTTP requests to prevent duplicate messages
+        # The frontend gets the message from the HTTP response
+        # Socket.IO is only used for messages from other users and bots
+        # from chat.app import socketio
+        # socketio.emit("message", result, to=str(room_id))
         
         print(f"[API v2] Message sent to room {room_id} by user {user_id}: {result['id']} (Socket.IO fan-out)")
         
