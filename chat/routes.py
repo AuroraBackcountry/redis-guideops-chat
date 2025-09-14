@@ -845,6 +845,87 @@ def handle_channels_preflight():
     else:
         return jsonify({"error": "CORS policy violation"}), 403
 
+@app.route("/api/channels/available", methods=["GET"])
+def get_available_channels():
+    """Get all available channels that user can join"""
+    if "user" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    user_id = session["user"]["id"]
+    
+    try:
+        # Get all existing rooms
+        all_rooms = []
+        room_keys = redis_client.keys("room:*")
+        
+        for key in room_keys:
+            key_str = key.decode('utf-8')
+            if key_str.endswith(':name'):
+                room_id = key_str.split(':')[1]
+                room_name = redis_client.get(key).decode('utf-8')
+                
+                # Get room metadata if exists
+                room_data = redis_client.hgetall(f"room:{room_id}")
+                
+                # Check if user is already a member
+                is_member = redis_client.sismember(f"room:{room_id}:members", user_id)
+                
+                all_rooms.append({
+                    "id": room_id,
+                    "name": room_name,
+                    "type": room_data.get(b"type", b"public").decode('utf-8') if room_data else "public",
+                    "description": room_data.get(b"description", b"").decode('utf-8') if room_data else "",
+                    "member_count": redis_client.scard(f"room:{room_id}:members"),
+                    "is_member": bool(is_member)
+                })
+        
+        print(f"[API] Found {len(all_rooms)} available channels for user {user_id}")
+        return jsonify(all_rooms)
+        
+    except Exception as e:
+        print(f"[API] Error getting available channels: {e}")
+        return jsonify({"error": "Failed to get channels"}), 500
+
+@app.route("/api/channels/<room_id>/join", methods=["POST"])
+def join_channel(room_id):
+    """Join an existing channel"""
+    if "user" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    user_id = session["user"]["id"]
+    
+    try:
+        # Check if room exists
+        if not redis_client.exists(f"room:{room_id}:name"):
+            return jsonify({"error": "Channel does not exist"}), 404
+        
+        # Check if already a member
+        if redis_client.sismember(f"room:{room_id}:members", user_id):
+            return jsonify({"message": "Already a member"}), 200
+        
+        # Add user to room
+        redis_client.sadd(f"room:{room_id}:members", user_id)
+        redis_client.sadd(f"user:{user_id}:rooms", room_id)
+        
+        # Update member count
+        member_count = redis_client.scard(f"room:{room_id}:members")
+        redis_client.hset(f"room:{room_id}", "member_count", str(member_count))
+        
+        room_name = redis_client.get(f"room:{room_id}:name").decode('utf-8')
+        
+        print(f"[API] User {user_id} joined channel '{room_name}' (ID: {room_id})")
+        
+        return jsonify({
+            "success": True,
+            "message": f"Successfully joined '{room_name}'",
+            "room_id": room_id,
+            "room_name": room_name
+        })
+        
+    except Exception as e:
+        print(f"[API] Error joining channel {room_id}: {e}")
+        return jsonify({"error": "Failed to join channel"}), 500
+
 @app.route("/admin")
 def admin_panel():
     """Simple admin panel for GuideOps chat"""
