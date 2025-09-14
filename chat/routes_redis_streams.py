@@ -104,6 +104,7 @@ def handle_bot_message(room_id, user_id, message_text, latitude, longitude):
         user_data = get_user_data(user_id)
         
         # Send to FastAPI/N8N
+        try:
             response = requests.post(
                 FASTAPI_BOT_URL,
                 json={
@@ -143,6 +144,17 @@ def handle_bot_message(room_id, user_id, message_text, latitude, longitude):
                 socketio.emit("message", error_msg, to=str(room_id))
                 return jsonify({"ok": False, "error": "Bot unavailable"}), 500
                 
+        except Exception as bot_error:
+            print(f"[BOT] FastAPI request failed: {bot_error}")
+            error_msg = redis_streams.add_message(
+                room_id=room_id,
+                user_id=BOT_USER_ID,
+                message_text="Sorry, I'm having technical difficulties. Please try again.",
+                latitude=None,
+                longitude=None
+            )
+            socketio.emit("message", error_msg, to=str(room_id))
+            return jsonify({"ok": True, "user_message": user_message, "bot_message": error_msg}), 201
     except Exception as e:
         print(f"[BOT] Error: {e}")
         return jsonify({"ok": False, "error": "Bot request failed"}), 500
