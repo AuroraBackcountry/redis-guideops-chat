@@ -994,6 +994,33 @@ def init_general_room():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/force-create-general", methods=["POST"])
+def force_create_general():
+    """Force create General room - debug endpoint"""
+    try:
+        # Delete existing room:0 if it exists
+        redis_client.delete("room:0")
+        redis_client.delete("room:0:name")
+        redis_client.delete("room:0:members")
+        
+        # Create General room hash
+        redis_client.hset("room:0", mapping={
+            "name": "General",
+            "type": "public",
+            "description": "General discussion channel"
+        })
+        
+        # Create room name string
+        redis_client.set("room:0:name", "General")
+        
+        # Create members set
+        redis_client.sadd("room:0:members", "1")
+        
+        print("[API] FORCE CREATED General room with full structure")
+        return jsonify({"success": True, "message": "General room FORCE CREATED"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/admin")
 def admin_panel():
     """Simple admin panel for GuideOps chat"""
