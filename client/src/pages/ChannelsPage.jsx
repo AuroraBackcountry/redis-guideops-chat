@@ -337,8 +337,29 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
               </div>
             )}
             
-            {/* Close search results */}
+            {/* Elrich AI Channel Creator */}
             <div className="text-center p-2 border-top">
+              <button
+                className="btn btn-success btn-sm mr-2"
+                onClick={async () => {
+                  try {
+                    const response = await axios.post(url('/api/channels/create-elrich'), {}, {
+                      withCredentials: true
+                    });
+                    if (response.data.success) {
+                      alert('🤖 ' + response.data.message);
+                      searchAvailableChannels(); // Refresh to show new channel
+                    }
+                  } catch (error) {
+                    console.error('Failed to create Elrich channel:', error);
+                    alert('Failed to create Elrich channel. Please try again.');
+                  }
+                }}
+                style={{ marginRight: '8px' }}
+              >
+                🤖 Create Elrich AI
+              </button>
+              
               <button
                 className="btn btn-link btn-sm text-muted"
                 onClick={() => setShowSearch(false)}

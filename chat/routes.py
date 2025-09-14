@@ -971,6 +971,62 @@ def debug_redis_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/channels/create-elrich", methods=["POST"])
+def create_elrich_channel():
+    """Create dedicated Elrich AI bot channel (webhook-based)"""
+    try:
+        # Check if Elrich channel already exists
+        existing_rooms = redis_client.keys("room:*:name")
+        for key in existing_rooms:
+            room_name = redis_client.get(key).decode('utf-8')
+            if room_name.lower() in ['elrich', '🤖 elrich', 'elrich ai']:
+                room_id = key.decode('utf-8').split(':')[1]
+                return jsonify({
+                    "success": True,
+                    "message": "Elrich channel already exists",
+                    "room_id": room_id,
+                    "room_name": room_name
+                })
+        
+        # Create Elrich channel
+        room_id = str(redis_client.incr("total_rooms"))
+        channel_name = "🤖 Elrich AI"
+        
+        # Store room metadata
+        room_data = {
+            "id": room_id,
+            "name": channel_name,
+            "type": "public",
+            "description": "Chat with Elrich AI - Powered by N8N webhooks",
+            "created_by": "system",
+            "created_at": str(time.time()),
+            "member_count": "0"
+        }
+        
+        redis_client.hset(f"room:{room_id}", mapping=room_data)
+        redis_client.set(f"room:{room_id}:name", channel_name)
+        
+        # Add welcome message to the channel
+        from chat.redis_streams import redis_streams
+        redis_streams.add_info_message(
+            room_id,
+            "🤖 Welcome to Elrich AI! Ask me anything about guiding and outdoor adventures. I'm powered by N8N webhooks for lightning-fast responses!"
+        )
+        
+        print(f"[API] Created Elrich AI channel with ID {room_id}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Elrich AI channel created successfully!",
+            "room_id": room_id,
+            "room_name": channel_name,
+            "description": "Webhook-based AI bot channel"
+        })
+        
+    except Exception as e:
+        print(f"[API] Error creating Elrich channel: {e}")
+        return jsonify({"error": "Failed to create Elrich channel"}), 500
+
 @app.route("/admin")
 def admin_panel():
     """Simple admin panel for GuideOps chat"""
