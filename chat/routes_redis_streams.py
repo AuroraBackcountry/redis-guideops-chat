@@ -191,12 +191,50 @@ def send_message_v2(room_id):
     latitude = body.get("lat") or body.get("latitude")
     longitude = body.get("long") or body.get("longitude") 
     
-    # Bot room now behaves like a normal channel (webhook-based approach)
-    # N8N will handle bot responses externally via webhooks
-    # if room_id == BOT_ROOM_ID:
-    #     return handle_bot_message(room_id, user_id, message_text, 
-    #                             float(latitude) if latitude is not None else None,
-    #                             float(longitude) if longitude is not None else None)
+    # Check if this is bot room - forward to N8N webhook  
+    if room_id == BOT_ROOM_ID:
+        # Store message normally first
+        result = redis_streams.add_message(
+            room_id=room_id,
+            user_id=user_id, 
+            message_text=message_text,
+            latitude=float(latitude) if latitude is not None else None,
+            longitude=float(longitude) if longitude is not None else None
+        )
+        
+        # Forward to N8N webhook (fire-and-forget)
+        try:
+            user_data = get_user_data(user_id) or {"first_name": "Unknown", "last_name": "User", "email": "unknown@example.com"}
+            
+            webhook_payload = {
+                "room_id": room_id,
+                "message_id": result["id"],
+                "user": {
+                    "id": user_id,
+                    "first_name": user_data.get('first_name', ''),
+                    "last_name": user_data.get('last_name', ''),
+                    "email": user_data.get('email', 'unknown@example.com')
+                },
+                "message": {
+                    "text": message_text,
+                    "latitude": latitude,
+                    "longitude": longitude
+                }
+            }
+            
+            # Fire-and-forget webhook to N8N
+            requests.post(
+                "https://n8n-aurora-ai.com/webhook/stream/query-ai",
+                json=webhook_payload,
+                timeout=5.0  # Short timeout, don't wait
+            )
+            print(f"[WEBHOOK] Forwarded message to N8N for room {room_id}")
+            
+        except Exception as webhook_error:
+            print(f"[WEBHOOK] Failed to forward to N8N: {webhook_error}")
+            # Continue normally even if webhook fails
+        
+        return jsonify({"ok": True, "message": result}), 201
     
     try:
         # Use Redis Streams system with user data enrichment
