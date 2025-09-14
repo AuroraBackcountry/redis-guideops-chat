@@ -1,8 +1,9 @@
-from chat.app import app, run_app  # noqa
 import eventlet
 
-# Initialize for both direct run and gunicorn
+# Initialize eventlet monkey patching FIRST (before any other imports)
 eventlet.monkey_patch()
+
+from chat.app import app, run_app  # noqa
 
 # Make app importable for gunicorn (Railway requirement)
 # gunicorn will import this as app:app
