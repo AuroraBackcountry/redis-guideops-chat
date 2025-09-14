@@ -191,11 +191,12 @@ def send_message_v2(room_id):
     latitude = body.get("lat") or body.get("latitude")
     longitude = body.get("long") or body.get("longitude") 
     
-    # Check if this is bot room
-    if room_id == BOT_ROOM_ID:
-        return handle_bot_message(room_id, user_id, message_text, 
-                                float(latitude) if latitude is not None else None,
-                                float(longitude) if longitude is not None else None)
+    # Bot room now behaves like a normal channel (webhook-based approach)
+    # N8N will handle bot responses externally via webhooks
+    # if room_id == BOT_ROOM_ID:
+    #     return handle_bot_message(room_id, user_id, message_text, 
+    #                             float(latitude) if latitude is not None else None,
+    #                             float(longitude) if longitude is not None else None)
     
     try:
         # Use Redis Streams system with user data enrichment
