@@ -79,8 +79,8 @@ const AppContent = () => {
           <Login onLogIn={onLogIn} />
         ) : (
           <Routes>
-            {/* Default route - redirect to general channel */}
-            <Route path="/" element={<Navigate to="/chat/0" replace />} />
+            {/* Default route - redirect to channels page */}
+            <Route path="/" element={<Navigate to="/channels" replace />} />
             
             {/* Chat routes */}
             <Route path="/chat/:roomId" element={
@@ -209,14 +209,7 @@ const useAppHandlers = () => {
       
       // Load user's actual rooms from backend
       if (Object.values(state.rooms).length === 0) {
-        // First, add General room immediately for fast UI
-        dispatch({
-          type: "add room",
-          payload: { id: "0", name: "General" }
-        });
-        dispatch({ type: "set current room", payload: "0" });
-        
-        // Then load user's actual room memberships from backend
+        // Load user's actual room memberships from backend
         import('./api').then(({ getRooms }) => {
           getRooms(user.id).then((rooms) => {
             console.log(`[App] Loading ${rooms.length} rooms for user ${user.id}:`, rooms);
