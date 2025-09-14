@@ -112,13 +112,23 @@ export const sendMessageV2 = async (roomId, messageText, options = {}) => {
       };
       
       // Direct N8N webhook (parallel, don't wait)
+      // Simplified payload for Postgres chat memory node compatibility
+      const simplifiedPayload = {
+        text: messageText,
+        user_id: userData.id || '1',
+        user_name: `${userData.first_name || 'Unknown'} ${userData.last_name || 'User'}`,
+        room_id: roomId,
+        latitude: options.latitude || null,
+        longitude: options.longitude || null
+      };
+      
       fetch('https://n8n-aurora-ai.com/webhook/stream/query-ai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'User-Agent': 'GuideOps-Chat-Frontend/1.0'
         },
-        body: JSON.stringify(n8nPayload)
+        body: JSON.stringify(simplifiedPayload)
       }).then(() => {
         console.log('[N8N] Direct webhook sent for instant AI processing ⚡');
       }).catch(err => {
