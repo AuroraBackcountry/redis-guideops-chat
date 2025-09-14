@@ -17,13 +17,9 @@ const Navbar = ({ currentPage, user, onLogOut, menuOpen, setMenuOpen }) => {
     getButtonLinks().then(setLinks);
   }, []);
   
-  // Get page title based on current route
+  // Always show GuideOps branding
   const getPageTitle = () => {
-    if (currentPage.startsWith('/chat')) return 'GuideOps Chat';
-    if (currentPage === '/channels') return 'Channels';
-    if (currentPage === '/settings') return 'Settings';
-    if (currentPage === '/profile') return 'Profile';
-    return 'GuideOps Chat';
+    return 'GuideOps';
   };
   
   return (

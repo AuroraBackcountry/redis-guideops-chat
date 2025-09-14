@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ChatListItem from "../components/Chat/components/ChatList/components/ChatListItem";
 import { createChannel } from "../api";
+import axios from "axios";
 
 /**
  * Channels Page - List of all channels and direct messages
@@ -15,6 +16,12 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const [isScrolling, setIsScrolling] = useState(false);
+  
+  // Channel search state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [availableChannels, setAvailableChannels] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   
   // Remember the last visited chat room
   const [lastChatRoom, setLastChatRoom] = useState(() => 
@@ -147,6 +154,68 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
     }
   };
 
+  // Search for available channels
+  const searchAvailableChannels = async () => {
+    if (!user) return;
+    
+    setSearchLoading(true);
+    try {
+      const response = await axios.get('/api/channels/available', {
+        withCredentials: true
+      });
+      setAvailableChannels(response.data);
+      console.log('Available channels:', response.data);
+    } catch (error) {
+      console.error('Failed to search channels:', error);
+      alert('Failed to search channels. Please try again.');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Join a channel
+  const joinChannel = async (roomId, roomName) => {
+    if (!user) return;
+    
+    try {
+      const response = await axios.post(`/api/channels/${roomId}/join`, {}, {
+        withCredentials: true
+      });
+      
+      if (response.data.success) {
+        // Add channel to local state so it appears immediately
+        dispatch({ 
+          type: "add room", 
+          payload: { 
+            id: roomId, 
+            name: roomName,
+            connected: false
+          } 
+        });
+        
+        alert(`Successfully joined "${roomName}"!`);
+        
+        // Refresh available channels to update membership status
+        searchAvailableChannels();
+        
+        // Navigate to the newly joined channel
+        handleRoomSelect(roomId);
+      }
+    } catch (error) {
+      console.error('Failed to join channel:', error);
+      alert('Failed to join channel. Please try again.');
+    }
+  };
+
+  // Filter available channels based on search term
+  const filteredChannels = availableChannels.filter(channel => 
+    channel.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    channel.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Show available channels that user isn't already a member of
+  const joinableChannels = filteredChannels.filter(channel => !channel.is_member);
+
   return (
     <div className="channels-page" style={{ 
       flex: 1,
@@ -177,6 +246,107 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
         }}>
           Swipe left to return to chat →
         </div>
+      </div>
+
+      {/* Channel Search Section */}
+      <div className="channel-search" style={{
+        padding: '16px',
+        backgroundColor: '#fff',
+        borderBottom: '1px solid #eee'
+      }}>
+        <div className="d-flex align-items-center mb-2">
+          <input
+            type="text"
+            className="form-control form-control-sm"
+            placeholder="Search for channels to join..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={() => {
+              setShowSearch(true);
+              if (availableChannels.length === 0) searchAvailableChannels();
+            }}
+            style={{ marginRight: '8px' }}
+          />
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={searchAvailableChannels}
+            disabled={searchLoading}
+            style={{ minWidth: '60px' }}
+          >
+            {searchLoading ? '...' : '🔍'}
+          </button>
+        </div>
+        
+        {/* Search Results */}
+        {showSearch && (
+          <div className="search-results" style={{
+            maxHeight: '200px',
+            overflowY: 'auto',
+            border: '1px solid #eee',
+            borderRadius: '4px',
+            backgroundColor: '#f8f9fa'
+          }}>
+            {joinableChannels.length > 0 ? (
+              <div className="p-2">
+                <small className="text-muted font-weight-bold d-block mb-2">
+                  AVAILABLE CHANNELS TO JOIN ({joinableChannels.length})
+                </small>
+                {joinableChannels.map((channel) => (
+                  <div 
+                    key={channel.id} 
+                    className="d-flex justify-content-between align-items-center p-2 mb-1"
+                    style={{ 
+                      backgroundColor: '#fff', 
+                      borderRadius: '4px',
+                      border: '1px solid #eee'
+                    }}
+                  >
+                    <div className="flex-grow-1">
+                      <div className="font-weight-bold">{channel.name}</div>
+                      {channel.description && (
+                        <small className="text-muted">{channel.description}</small>
+                      )}
+                      <small className="text-muted d-block">
+                        {channel.member_count} members • {channel.type}
+                      </small>
+                    </div>
+                    <button
+                      className="btn btn-success btn-sm ml-2"
+                      onClick={() => joinChannel(channel.id, channel.name)}
+                      style={{ minWidth: '60px' }}
+                    >
+                      Join
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : searchLoading ? (
+              <div className="text-center p-3">
+                <small className="text-muted">Searching for channels...</small>
+              </div>
+            ) : availableChannels.length > 0 ? (
+              <div className="text-center p-3">
+                <small className="text-muted">
+                  {searchTerm ? 'No matching channels found' : 'You\'re already a member of all available channels!'}
+                </small>
+              </div>
+            ) : (
+              <div className="text-center p-3">
+                <small className="text-muted">Click search to find available channels</small>
+              </div>
+            )}
+            
+            {/* Close search results */}
+            <div className="text-center p-2 border-top">
+              <button
+                className="btn btn-link btn-sm text-muted"
+                onClick={() => setShowSearch(false)}
+              >
+                Close Search
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Room Lists with swipe navigation */}
