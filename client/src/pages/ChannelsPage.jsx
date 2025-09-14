@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ChatListItem from "../components/Chat/components/ChatList/components/ChatListItem";
-import { createChannel } from "../api";
+import { createChannel, url } from "../api";
 import axios from "axios";
 
 /**
@@ -160,13 +160,14 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
     
     setSearchLoading(true);
     try {
-      const response = await axios.get('/api/channels/available', {
+      const response = await axios.get(url('/api/channels/available'), {
         withCredentials: true
       });
       setAvailableChannels(response.data);
       console.log('Available channels:', response.data);
     } catch (error) {
       console.error('Failed to search channels:', error);
+      console.error('Error details:', error.response?.data || error.message);
       alert('Failed to search channels. Please try again.');
     } finally {
       setSearchLoading(false);
@@ -178,7 +179,7 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
     if (!user) return;
     
     try {
-      const response = await axios.post(`/api/channels/${roomId}/join`, {}, {
+      const response = await axios.post(url(`/api/channels/${roomId}/join`), {}, {
         withCredentials: true
       });
       
