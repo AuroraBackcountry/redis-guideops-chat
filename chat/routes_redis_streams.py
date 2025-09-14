@@ -223,12 +223,17 @@ def send_message_v2(room_id):
             }
             
             # Fire-and-forget webhook to N8N
-            requests.post(
+            webhook_response = requests.post(
                 "https://n8n-aurora-ai.com/webhook/stream/query-ai",
                 json=webhook_payload,
-                timeout=5.0  # Short timeout, don't wait
+                timeout=5.0,  # Short timeout, don't wait
+                headers={
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'GuideOps-Chat-Bot/1.0'
+                }
             )
-            print(f"[WEBHOOK] Forwarded message to N8N for room {room_id}")
+            print(f"[WEBHOOK] Sent to N8N - Status: {webhook_response.status_code}, Response: {webhook_response.text[:200]}")
+            print(f"[WEBHOOK] Payload sent: {json.dumps(webhook_payload, indent=2)}")
             
         except Exception as webhook_error:
             print(f"[WEBHOOK] Failed to forward to N8N: {webhook_error}")
