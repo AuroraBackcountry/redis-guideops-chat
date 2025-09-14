@@ -882,6 +882,12 @@ def get_available_channels():
                 })
         
         print(f"[API] Found {len(all_rooms)} available channels for user {user_id}")
+        
+        # Debug logging to understand what's happening
+        for room in all_rooms:
+            membership_status = "MEMBER" if room['is_member'] else "NOT MEMBER"
+            print(f"[DEBUG] Channel '{room['name']}' (ID: {room['id']}) - {membership_status} - Type: {room['type']} - Members: {room['member_count']}")
+        
         return jsonify(all_rooms)
         
     except Exception as e:
@@ -929,6 +935,41 @@ def join_channel(room_id):
     except Exception as e:
         print(f"[API] Error joining channel {room_id}: {e}")
         return jsonify({"error": "Failed to join channel"}), 500
+
+@app.route("/api/debug/redis", methods=["GET"])
+def debug_redis_data():
+    """Debug endpoint to see what's actually in Redis"""
+    try:
+        debug_info = {
+            "total_keys": len(redis_client.keys("*")),
+            "room_keys": [],
+            "user_keys": [],
+            "all_room_names": [],
+            "user_1_rooms": []
+        }
+        
+        # Get all room keys
+        all_keys = redis_client.keys("*")
+        for key in all_keys:
+            key_str = key.decode('utf-8')
+            if key_str.startswith('room:'):
+                key_type = redis_client.type(key).decode('utf-8')
+                if key_str.endswith(':name'):
+                    room_name = redis_client.get(key).decode('utf-8')
+                    debug_info["all_room_names"].append(f"{key_str} = {room_name}")
+                debug_info["room_keys"].append(f"{key_str} ({key_type})")
+            elif key_str.startswith('user:'):
+                debug_info["user_keys"].append(key_str)
+        
+        # Check user 1's room memberships
+        user_1_rooms = redis_client.smembers("user:1:rooms")
+        debug_info["user_1_rooms"] = [r.decode('utf-8') for r in user_1_rooms]
+        
+        print(f"[DEBUG] Redis contains {debug_info['total_keys']} total keys")
+        return jsonify(debug_info)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/admin")
 def admin_panel():
