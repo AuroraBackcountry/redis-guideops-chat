@@ -145,7 +145,7 @@ class RedisStreamsChat:
             "message": str(message_text),  # Backward compatibility
             "tsServer": ts_server,
             "tsIso": ts_iso,  # Enhanced ISO 8601 timestamp
-            "date": int(ts_server / 1000),  # Backward compatibility (seconds)
+            "date": ts_server,  # Milliseconds for precise timestamps
             "kind": "message"
         }
         
@@ -308,7 +308,7 @@ class RedisStreamsChat:
                     "message": decoded_fields.get("text", ""),
                     "tsServer": int(decoded_fields.get("ts_server", 0)),
                     "tsIso": decoded_fields.get("ts_iso", ""),
-                    "date": int(int(decoded_fields.get("ts_server", 0)) / 1000),
+                    "date": int(decoded_fields.get("ts_server", 0)),
                     "kind": decoded_fields.get("kind", "message")
                 }
                 
@@ -394,7 +394,7 @@ class RedisStreamsChat:
                 "message": decoded_fields.get("text", ""),  # Backward compatibility
                 "tsServer": int(decoded_fields.get("ts_server", 0)),
                 "tsIso": decoded_fields.get("ts_iso", ""),  # Enhanced ISO timestamp
-                "date": int(int(decoded_fields.get("ts_server", 0)) / 1000),  # Backward compatibility
+                "date": int(decoded_fields.get("ts_server", 0)),  # Milliseconds for precise timestamps
                 "kind": decoded_fields.get("kind", "message")
             }
             
@@ -462,7 +462,7 @@ class RedisStreamsChat:
             "text": str(message_text),
             "message": str(message_text),
             "tsServer": ts_server,
-            "date": int(ts_server / 1000),
+            "date": ts_server,
             "kind": "info"
         }
 

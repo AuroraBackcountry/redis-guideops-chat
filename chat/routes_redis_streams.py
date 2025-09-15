@@ -317,9 +317,9 @@ def send_message_v2(room_id):
         # Use Redis Streams system with user data enrichment
         result = publish_message(room_id, {"id": user_id}, body, redis_client)
         
-        # Fix timestamp format for frontend compatibility
+        # Fix timestamp format for frontend compatibility - use milliseconds to prevent duplicates
         if 'ts_ms' in result:
-            result['date'] = result['ts_ms']  # Frontend now expects milliseconds with moment()
+            result['date'] = result['ts_ms']  # Keep milliseconds for precise timestamps
         
         # Add user data for frontend compatibility
         user_data = get_user_data(user_id)
