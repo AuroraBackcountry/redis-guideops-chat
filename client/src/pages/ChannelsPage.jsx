@@ -207,6 +207,40 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
       alert('Failed to join channel. Please try again.');
     }
   };
+  
+  // Unarchive a channel
+  const unarchiveChannel = async (roomId, roomName) => {
+    if (!user) return;
+    
+    try {
+      const response = await axios.post(url(`/api/channels/${roomId}/unarchive`), {}, {
+        withCredentials: true
+      });
+      
+      if (response.data.success) {
+        // Add back to local state
+        dispatch({
+          type: "add room",
+          payload: { 
+            id: roomId, 
+            name: roomName,
+            connected: false 
+          }
+        });
+        
+        alert(`"${roomName}" unarchived successfully!`);
+        
+        // Refresh available channels to update status
+        searchAvailableChannels();
+        
+        // Navigate to the unarchived channel
+        handleRoomSelect(roomId);
+      }
+    } catch (error) {
+      console.error('Failed to unarchive channel:', error);
+      alert('Failed to unarchive channel. Please try again.');
+    }
+  };
 
   // Filter available channels based on search term
   const filteredChannels = availableChannels.filter(channel => 
@@ -214,8 +248,9 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
     channel.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Show available channels that user isn't already a member of
-  const joinableChannels = filteredChannels.filter(channel => !channel.is_member);
+  // Separate joinable channels and archived channels
+  const joinableChannels = filteredChannels.filter(channel => !channel.is_member && !channel.is_archived);
+  const archivedChannels = filteredChannels.filter(channel => channel.is_archived);
 
   return (
     <div className="channels-page" style={{ 
@@ -321,7 +356,50 @@ export default function ChannelsPage({ user, rooms, dispatch, currentRoom }) {
                   </div>
                 ))}
               </div>
-            ) : searchLoading ? (
+            ) : null}
+            
+            {/* Archived Channels Section */}
+            {archivedChannels.length > 0 && (
+              <div className="p-2">
+                <small className="text-muted font-weight-bold d-block mb-2">
+                  📦 ARCHIVED CHANNELS ({archivedChannels.length})
+                </small>
+                {archivedChannels.map((channel) => (
+                  <div 
+                    key={channel.id} 
+                    className="d-flex justify-content-between align-items-center p-2 mb-1"
+                    style={{ 
+                      backgroundColor: '#f8f9fa', 
+                      borderRadius: '4px',
+                      border: '1px solid #dee2e6',
+                      opacity: 0.8
+                    }}
+                  >
+                    <div className="flex-grow-1">
+                      <div className="font-weight-bold">
+                        📦 {channel.name} <small className="text-muted">(Archived)</small>
+                      </div>
+                      {channel.description && (
+                        <small className="text-muted">{channel.description}</small>
+                      )}
+                      <small className="text-muted d-block">
+                        {channel.member_count} members • {channel.type}
+                      </small>
+                    </div>
+                    <button
+                      className="btn btn-outline-primary btn-sm ml-2"
+                      onClick={() => unarchiveChannel(channel.id, channel.name)}
+                      style={{ minWidth: '80px' }}
+                    >
+                      Unarchive
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {(joinableChannels.length === 0 && archivedChannels.length === 0) && (
+              searchLoading ? (
               <div className="text-center p-3">
                 <small className="text-muted">Searching for channels...</small>
               </div>

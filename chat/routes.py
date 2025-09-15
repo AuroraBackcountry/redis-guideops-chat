@@ -837,13 +837,17 @@ def get_available_channels():
                 # Check if user is already a member
                 is_member = redis_client.sismember(f"room:{room_id}:members", user_id)
                 
+                # Check if channel is archived
+                is_archived = room_data.get(b"archived", b"").decode('utf-8') == "true" if room_data else False
+                
                 all_rooms.append({
                     "id": room_id,
                     "name": room_name,
                     "type": room_data.get(b"type", b"public").decode('utf-8') if room_data else "public",
                     "description": room_data.get(b"description", b"").decode('utf-8') if room_data else "",
                     "member_count": redis_client.scard(f"room:{room_id}:members"),
-                    "is_member": bool(is_member)
+                    "is_member": bool(is_member),
+                    "is_archived": is_archived
                 })
         
         print(f"[API] Found {len(all_rooms)} available channels for user {user_id}")
@@ -1210,6 +1214,38 @@ def archive_channel(room_id):
     except Exception as e:
         print(f"[API] Error archiving channel {room_id}: {e}")
         return jsonify({"error": "Failed to archive channel"}), 500
+
+@app.route("/api/channels/<room_id>/unarchive", methods=["POST"])
+def unarchive_channel(room_id):
+    """Unarchive a channel - restore to active channels"""
+    # Temporarily disable auth for cross-domain session issues
+    # if "user" not in session:
+    #     return jsonify({"error": "Not authenticated"}), 401
+    
+    # Prevent unarchiving of General channel (it should never be archived)
+    if room_id == "0":
+        return jsonify({"error": "General channel cannot be archived/unarchived"}), 400
+    
+    try:
+        # Check if channel exists
+        room_exists = redis_client.exists(f"room:{room_id}")
+        if not room_exists:
+            return jsonify({"error": "Channel not found"}), 404
+        
+        # Remove archived flag
+        redis_client.hdel(f"room:{room_id}", "archived")
+        
+        # Move back to user's active rooms
+        user_id = "1"  # TODO: Get from session when auth is fixed
+        redis_client.srem(f"user:{user_id}:archived_rooms", room_id)
+        redis_client.sadd(f"user:{user_id}:rooms", room_id)
+        
+        print(f"[API] Channel {room_id} unarchived by user {user_id}")
+        return jsonify({"success": True, "message": "Channel unarchived successfully"})
+        
+    except Exception as e:
+        print(f"[API] Error unarchiving channel {room_id}: {e}")
+        return jsonify({"error": "Failed to unarchive channel"}), 500
 
 @app.route("/api/channels/<room_id>/delete", methods=["DELETE"])
 def delete_channel(room_id):
