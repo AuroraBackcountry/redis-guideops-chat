@@ -210,24 +210,42 @@ const ChannelInfoModal = ({ channel, isOpen, onClose, onChannelUpdated }) => {
 
         {/* Action Buttons */}
         <div className="action-buttons">
-          <div className="d-flex flex-column gap-2">
-            <button 
-              className="btn btn-warning btn-sm"
-              onClick={handleArchiveChannel}
-              style={{ marginBottom: '8px' }}
-            >
-              📦 Archive Channel
-            </button>
-            
-            <button 
-              className="btn btn-danger btn-sm"
-              onClick={handleDeleteChannel}
-            >
-              🗑️ Delete Channel
-            </button>
-          </div>
+          {/* Only show management buttons for non-General channels */}
+          {channel.id !== "0" && (
+            <div className="d-flex flex-column gap-2" style={{ marginBottom: '16px' }}>
+              <button 
+                className="btn btn-warning btn-sm"
+                onClick={handleArchiveChannel}
+                style={{ marginBottom: '8px' }}
+              >
+                📦 Archive Channel
+              </button>
+              
+              <button 
+                className="btn btn-danger btn-sm"
+                onClick={handleDeleteChannel}
+              >
+                🗑️ Delete Channel
+              </button>
+            </div>
+          )}
           
-          <div className="text-center mt-3">
+          {/* General channel info message */}
+          {channel.id === "0" && (
+            <div className="alert alert-info" style={{ 
+              fontSize: '14px', 
+              marginBottom: '16px',
+              padding: '12px',
+              backgroundColor: '#e3f2fd',
+              border: '1px solid #bbdefb',
+              borderRadius: '6px'
+            }}>
+              <strong>🏠 General Channel</strong><br/>
+              This is the main channel for your team. It cannot be archived or deleted.
+            </div>
+          )}
+          
+          <div className="text-center">
             <button 
               className="btn btn-secondary btn-sm"
               onClick={onClose}

@@ -1186,6 +1186,10 @@ def archive_channel(room_id):
     # if "user" not in session:
     #     return jsonify({"error": "Not authenticated"}), 401
     
+    # Prevent archiving of General channel
+    if room_id == "0":
+        return jsonify({"error": "Cannot archive General channel"}), 400
+    
     try:
         # Check if channel exists
         room_exists = redis_client.exists(f"room:{room_id}")
