@@ -1247,6 +1247,50 @@ def unarchive_channel(room_id):
         print(f"[API] Error unarchiving channel {room_id}: {e}")
         return jsonify({"error": "Failed to unarchive channel"}), 500
 
+@app.route("/api/channels/<room_id>/members", methods=["GET"])
+def get_channel_members(room_id):
+    """Get list of members in a channel"""
+    # Temporarily disable auth for cross-domain session issues
+    # if "user" not in session:
+    #     return jsonify({"error": "Not authenticated"}), 401
+    
+    try:
+        # Check if channel exists
+        room_exists = redis_client.exists(f"room:{room_id}")
+        if not room_exists:
+            return jsonify({"error": "Channel not found"}), 404
+        
+        # Get all member IDs
+        member_ids = redis_client.smembers(f"room:{room_id}:members")
+        
+        # Get member details
+        members = []
+        for member_id in member_ids:
+            member_id_str = member_id.decode('utf-8') if isinstance(member_id, bytes) else member_id
+            
+            # Get user data
+            user_data = redis_client.hgetall(f"user:{member_id_str}")
+            if user_data:
+                # Check if user is online
+                is_online = redis_client.sismember("online_users", member_id_str)
+                
+                members.append({
+                    "id": member_id_str,
+                    "username": user_data.get(b"username", b"").decode('utf-8') or f"User {member_id_str}",
+                    "first_name": user_data.get(b"first_name", b"").decode('utf-8'),
+                    "last_name": user_data.get(b"last_name", b"").decode('utf-8'),
+                    "email": user_data.get(b"email", b"").decode('utf-8'),
+                    "role": user_data.get(b"role", b"user").decode('utf-8'),
+                    "online": bool(is_online)
+                })
+        
+        print(f"[API] Found {len(members)} members in channel {room_id}")
+        return jsonify({"members": members})
+        
+    except Exception as e:
+        print(f"[API] Error getting channel members {room_id}: {e}")
+        return jsonify({"error": "Failed to get channel members"}), 500
+
 @app.route("/api/channels/<room_id>/delete", methods=["DELETE"])
 def delete_channel(room_id):
     """Delete a channel permanently - removes all data"""

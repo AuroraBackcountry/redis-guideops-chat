@@ -27,11 +27,11 @@ const ChannelInfoModal = ({ channel, isOpen, onClose, onChannelUpdated }) => {
     
     try {
       // TODO: Add API endpoint to get channel members
-      // For now, show placeholder data
-      setMembers([
-        { id: '1', username: 'ben johns', role: 'admin', online: true },
-        { id: '2', username: 'will smith', role: 'member', online: false }
-      ]);
+      // For now, load actual members from Redis
+      const response = await axios.get(url(`/api/channels/${channel.id}/members`), {
+        withCredentials: true
+      });
+      setMembers(response.data.members || []);
     } catch (err) {
       setError('Failed to load channel members');
       console.error('Error loading channel members:', err);
