@@ -6,6 +6,7 @@ import TypingArea from "../components/Chat/components/TypingArea";
 import useChatHandlers from "../components/Chat/use-chat-handlers";
 import { getMessagesV2, sendMessageV2 } from "../api-v2";
 import { useSocket } from "../hooks";
+import ChannelInfoModal from "../components/ChannelInfoModal";
 // Removed api-v2-test import - file doesn't exist
 
 /**
@@ -20,6 +21,9 @@ export default function ChatPage({ user, onMessageSend }) {
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const [isScrolling, setIsScrolling] = useState(false);
+  
+  // Channel info modal state
+  const [showChannelInfo, setShowChannelInfo] = useState(false);
 
   const minSwipeDistance = 60;
   const maxVerticalDistance = 80;
@@ -468,8 +472,8 @@ export default function ChatPage({ user, onMessageSend }) {
       overflow: 'hidden'
     }}>
       
-      {/* Mobile Chat Header - No back button, swipe navigation */}
-      <div className="chat-header d-flex align-items-center justify-content-center" style={{
+      {/* Mobile Chat Header - Channel name left, info icon right */}
+      <div className="chat-header d-flex align-items-center justify-content-between" style={{
         padding: '12px 16px',
         backgroundColor: '#fff',
         borderBottom: '1px solid #eee',
@@ -480,6 +484,22 @@ export default function ChatPage({ user, onMessageSend }) {
         <h5 className="mb-0" style={{ fontWeight: '500' }}>
           {currentRoomData ? currentRoomData.name : "Chat"}
         </h5>
+        
+        {/* Channel Info Icon - only show for channels, not DMs */}
+        {currentRoomData && (currentRoomData.id === "0" || !String(currentRoomData.id).includes(":")) && (
+          <button 
+            className="btn btn-link p-1"
+            onClick={() => setShowChannelInfo(true)}
+            style={{ 
+              fontSize: '18px', 
+              color: '#6c757d',
+              lineHeight: 1
+            }}
+            title="Channel Information"
+          >
+            ℹ️
+          </button>
+        )}
         
         {/* Swipe hint */}
         <div style={{
@@ -550,6 +570,17 @@ export default function ChatPage({ user, onMessageSend }) {
           }}
         />
       </div>
+      
+      {/* Channel Info Modal */}
+      <ChannelInfoModal
+        channel={currentRoomData}
+        isOpen={showChannelInfo}
+        onClose={() => setShowChannelInfo(false)}
+        onChannelUpdated={() => {
+          // Refresh channel data if needed
+          console.log('Channel updated, refreshing...');
+        }}
+      />
     </div>
   );
 }
