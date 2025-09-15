@@ -1,10 +1,10 @@
 import axios from 'axios';
 axios.defaults.withCredentials = true;
 
-// Configure API base URL for split deployment
+// Configure API base URL for proper local/production split
 const BASE_URL = process.env.NODE_ENV === 'production' 
   ? process.env.REACT_APP_API_URL || 'https://redis-guideops-chat-production.up.railway.app'
-  : 'https://redis-guideops-chat-production.up.railway.app'; // Use live backend for local dev
+  : process.env.REACT_APP_API_URL || 'http://localhost:5000'; // Local backend for local dev
 
 export const MESSAGES_TO_LOAD = 15;
 
