@@ -321,6 +321,14 @@ def send_message_v2(room_id):
         if 'ts_ms' in result:
             result['date'] = result['ts_ms']  # Keep milliseconds for precise timestamps
         
+        # Map message_id to id for frontend compatibility
+        if 'message_id' in result:
+            result['id'] = result['message_id']
+        
+        # Add message field for compatibility (same as text)
+        if 'text' in result:
+            result['message'] = result['text']
+        
         # Add user data for frontend compatibility
         user_data = get_user_data(user_id)
         if user_data:
