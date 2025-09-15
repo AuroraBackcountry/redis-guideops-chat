@@ -12,7 +12,12 @@ import OnlineIndicator from "../../../OnlineIndicator";
  * @param {{ active: boolean; room: import('../../../../../../state').Room; onClick: () => void; }} props
  */
 const ChatListItem = ({ room, active = false, onClick }) => {
-  const { online, name, lastMessage, userId, messagePreview } = useChatListItemHandlers(room);
+  const { online, name, lastMessage, userId, messagePreview, hasUnread, isChannel, isDirectMessage } = useChatListItemHandlers(room);
+  
+  // Determine indicator logic
+  const showIndicator = isDirectMessage ? true : hasUnread; // DMs: always show, Channels: only if unread
+  const indicatorOnline = isDirectMessage ? online : true; // DMs: actual status, Channels: green if unread
+  
   return (
     <div
       onClick={onClick}
@@ -21,7 +26,7 @@ const ChatListItem = ({ room, active = false, onClick }) => {
       }`}
     >
       <div className="align-self-center mr-3">
-        <OnlineIndicator online={online} hide={room.id === "0"} />
+        <OnlineIndicator online={indicatorOnline} hide={!showIndicator} />
       </div>
       <div className="align-self-center mr-3">
         <AvatarImage name={name} id={userId} />
@@ -50,7 +55,11 @@ const useChatListItemHandlers = (
   const [state] = useAppState();
   
   // Get current user info for "You:" vs "SenderName:" logic
-  const currentUser = state.user || JSON.parse(localStorage.getItem('guideops_user') || '{}');
+  const currentUser = state.users?.[state.currentUser] || JSON.parse(localStorage.getItem('guideops_user') || '{}');
+  
+  // Determine room type
+  const isChannel = id === "0" || !String(id).includes(":");
+  const isDirectMessage = String(id).includes(":") && id !== "0";
 
   /** Here we want to associate the room with a user by its name (since it's unique). */
   const [isUser, online, userId] = useMemo(() => {
@@ -122,6 +131,13 @@ const useChatListItemHandlers = (
     
     return `${senderName}: ${messageText}`;
   }, [lastMessage, state.users, room.name, room.id, currentUser]);
+  
+  // Simple unread detection: if there's a lastMessage and room isn't currently active
+  const hasUnread = useMemo(() => {
+    // For now, assume unread if there's a message and room isn't the current room
+    // TODO: Implement proper last-read tracking with Redis
+    return lastMessage && state.currentRoom !== id;
+  }, [lastMessage, state.currentRoom, id]);
 
   return {
     isUser,
@@ -130,6 +146,9 @@ const useChatListItemHandlers = (
     name: room.name,
     lastMessage,
     messagePreview,
+    hasUnread,
+    isChannel,
+    isDirectMessage,
   };
 };
 
