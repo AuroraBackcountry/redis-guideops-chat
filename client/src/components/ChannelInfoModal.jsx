@@ -49,11 +49,17 @@ const ChannelInfoModal = ({ channel, isOpen, onClose, onChannelUpdated }) => {
     
     if (confirmed) {
       try {
-        // TODO: Add archive API endpoint
-        console.log('Archiving channel:', channel.id);
-        alert('Channel archived successfully! (Feature in development)');
-        onClose();
-        if (onChannelUpdated) onChannelUpdated();
+        const response = await axios.post(url(`/api/channels/${channel.id}/archive`), {}, {
+          withCredentials: true
+        });
+        
+        if (response.data.success) {
+          alert('Channel archived successfully!');
+          onClose();
+          if (onChannelUpdated) onChannelUpdated();
+          // Redirect to channels page since current channel is now archived
+          window.location.href = '/channels';
+        }
       } catch (err) {
         alert('Failed to archive channel. Please try again.');
         console.error('Error archiving channel:', err);
@@ -69,21 +75,29 @@ const ChannelInfoModal = ({ channel, isOpen, onClose, onChannelUpdated }) => {
     );
     
     if (confirmed) {
-      const doubleConfirm = window.confirm(
-        `Are you absolutely sure? Type the channel name to confirm deletion:\n\nExpected: "${channel.name}"`
+      const channelNameInput = prompt(
+        `Type the channel name to confirm deletion:\n\nExpected: "${channel.name}"`
       );
       
-      if (doubleConfirm) {
+      if (channelNameInput === channel.name) {
         try {
-          // TODO: Add delete API endpoint
-          console.log('Deleting channel:', channel.id);
-          alert('Channel deleted successfully! (Feature in development)');
-          onClose();
-          if (onChannelUpdated) onChannelUpdated();
+          const response = await axios.delete(url(`/api/channels/${channel.id}/delete`), {
+            withCredentials: true
+          });
+          
+          if (response.data.success) {
+            alert('Channel deleted permanently!');
+            onClose();
+            if (onChannelUpdated) onChannelUpdated();
+            // Redirect to channels page since current channel is deleted
+            window.location.href = '/channels';
+          }
         } catch (err) {
           alert('Failed to delete channel. Please try again.');
           console.error('Error deleting channel:', err);
         }
+      } else if (channelNameInput !== null) {
+        alert('Channel name did not match. Deletion cancelled.');
       }
     }
   };

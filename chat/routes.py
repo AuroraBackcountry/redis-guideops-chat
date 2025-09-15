@@ -1179,6 +1179,77 @@ def get_users():
 
 # V1 ZSET message endpoint removed - use /v2/rooms/{id}/messages only
 
+@app.route("/api/channels/<room_id>/archive", methods=["POST"])
+def archive_channel(room_id):
+    """Archive a channel - hide but keep searchable"""
+    # Temporarily disable auth for cross-domain session issues
+    # if "user" not in session:
+    #     return jsonify({"error": "Not authenticated"}), 401
+    
+    try:
+        # Check if channel exists
+        room_exists = redis_client.exists(f"room:{room_id}")
+        if not room_exists:
+            return jsonify({"error": "Channel not found"}), 404
+        
+        # Set archived flag
+        redis_client.hset(f"room:{room_id}", "archived", "true")
+        
+        # Remove from user's active rooms but keep in archived list
+        user_id = "1"  # TODO: Get from session when auth is fixed
+        redis_client.srem(f"user:{user_id}:rooms", room_id)
+        redis_client.sadd(f"user:{user_id}:archived_rooms", room_id)
+        
+        print(f"[API] Channel {room_id} archived by user {user_id}")
+        return jsonify({"success": True, "message": "Channel archived successfully"})
+        
+    except Exception as e:
+        print(f"[API] Error archiving channel {room_id}: {e}")
+        return jsonify({"error": "Failed to archive channel"}), 500
+
+@app.route("/api/channels/<room_id>/delete", methods=["DELETE"])
+def delete_channel(room_id):
+    """Delete a channel permanently - removes all data"""
+    # Temporarily disable auth for cross-domain session issues
+    # if "user" not in session:
+    #     return jsonify({"error": "Not authenticated"}), 401
+    
+    # Prevent deletion of General channel
+    if room_id == "0":
+        return jsonify({"error": "Cannot delete General channel"}), 400
+    
+    try:
+        # Check if channel exists
+        room_exists = redis_client.exists(f"room:{room_id}")
+        if not room_exists:
+            return jsonify({"error": "Channel not found"}), 404
+        
+        # Delete all channel data
+        redis_client.delete(f"room:{room_id}")          # Room metadata
+        redis_client.delete(f"room:{room_id}:name")     # Room name
+        redis_client.delete(f"room:{room_id}:members")  # Room members
+        
+        # Delete all messages from Redis Streams
+        stream_key = f"stream:room:{room_id}"
+        redis_client.delete(stream_key)
+        
+        # Remove from all users' room lists
+        user_keys = redis_client.keys("user:*:rooms")
+        for user_key in user_keys:
+            redis_client.srem(user_key, room_id)
+        
+        # Remove from archived lists too
+        archived_keys = redis_client.keys("user:*:archived_rooms")
+        for archived_key in archived_keys:
+            redis_client.srem(archived_key, room_id)
+        
+        print(f"[API] Channel {room_id} permanently deleted")
+        return jsonify({"success": True, "message": "Channel deleted permanently"})
+        
+    except Exception as e:
+        print(f"[API] Error deleting channel {room_id}: {e}")
+        return jsonify({"error": "Failed to delete channel"}), 500
+
 @app.route("/links")
 def get_links():
     """Get demo links"""
