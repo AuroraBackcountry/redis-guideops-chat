@@ -10,7 +10,6 @@ from chat import utils
 from chat.utils import redis_client
 import json
 import requests  # Use requests instead of httpx
-from chat.message_validator import publish_message
 
 # Add bot constants at top
 BOT_USER_ID = "bot_elrich"
@@ -314,31 +313,14 @@ def send_message_v2(room_id):
     # This enables instant parallel processing: storage + AI response
     
     try:
-        # Use Redis Streams system with user data enrichment
-        result = publish_message(room_id, {"id": user_id}, body, redis_client)
-        
-        # Fix timestamp format for frontend compatibility - use milliseconds to prevent duplicates
-        if 'ts_ms' in result:
-            result['date'] = result['ts_ms']  # Keep milliseconds for precise timestamps
-        
-        # Map message_id to id for frontend compatibility
-        if 'message_id' in result:
-            result['id'] = result['message_id']
-        
-        # Add message field for compatibility (same as text)
-        if 'text' in result:
-            result['message'] = result['text']
-        
-        # Add user data for frontend compatibility
-        user_data = get_user_data(user_id)
-        if user_data:
-            result['from'] = user_id
-            result['user'] = {
-                "id": user_id,
-                "username": user_data.get("username", f"User {user_id}"),
-                "first_name": user_data.get("first_name", ""),
-                "last_name": user_data.get("last_name", "")
-            }
+        # Use proper Redis Streams schema - direct call to redis_streams.add_message
+        result = redis_streams.add_message(
+            room_id=room_id,
+            user_id=user_id,
+            message_text=message_text,
+            latitude=validated_lat,
+            longitude=validated_lon
+        )
         
         # Skip Socket.IO emission for HTTP requests to prevent duplicate messages
         # The frontend gets the message from the HTTP response
@@ -346,7 +328,7 @@ def send_message_v2(room_id):
         # from chat.app import socketio
         # socketio.emit("message", result, to=str(room_id))
         
-        print(f"[API v2] ✅ Message sent to room {room_id} by user {user_id}: {result.get('message_id', 'unknown')} | GPS: {'Yes' if validated_lat or validated_lon else 'No'}")
+        print(f"[API v2] ✅ Message sent to room {room_id} by user {user_id}: {result.get('id', 'unknown')} | GPS: {'Yes' if validated_lat or validated_lon else 'No'}")
         
         return jsonify({"ok": True, "message": result}), 201
         
